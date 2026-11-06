@@ -1,14 +1,4 @@
-import nodemailer from "nodemailer";
-import dotenv from "dotenv";
-dotenv.config();
-
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+import sendMail from "./transport.js";
 
 const sendVerificationOTP = async ({ email, OTP }) => {
   const mailOptions = {
@@ -80,7 +70,7 @@ const sendVerificationOTP = async ({ email, OTP }) => {
   };
 
   try {
-    const info = await transporter.sendMail(mailOptions);
+    const info = await sendMail(mailOptions);
     return { status: 1 };
   } catch (error) {
     return { status: -1 };

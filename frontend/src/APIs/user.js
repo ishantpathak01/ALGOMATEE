@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const SERVER = "http://localhost:8000";
+const SERVER = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 export const logIn = async (data) => {
   try {

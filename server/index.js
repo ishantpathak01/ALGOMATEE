@@ -32,8 +32,18 @@ const limiter = rateLimit({
 });
 
 // Middlewares
+const allowedOrigins = [
+  "http://localhost:3000",
+  ...(process.env.FRONTEND_URL || "")
+    .split(",")
+    .map((u) => u.trim().replace(/\/$/, ""))
+    .filter(Boolean),
+];
 app.use(cors({
-  origin: "http://localhost:3000", // change in production
+  origin: (origin, callback) =>
+    !origin || allowedOrigins.includes(origin)
+      ? callback(null, true)
+      : callback(new Error("Not allowed by CORS")),
   credentials: true
 }));
 

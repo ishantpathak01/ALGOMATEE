@@ -13,7 +13,7 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 function Chats() {
-  const socket = io("http://localhost:8000");
+  const socket = io(process.env.REACT_APP_API_URL || "http://localhost:8000");
   const [messages, setMessages] = useState([]);
   const [loadingChat, setLoadingChat] = useState(true);
   const [activeChat, setActiveChat] = useState(null);
