@@ -1,0 +1,43 @@
+export const plans = [
+  {
+    id: 1,
+    title: "Google 90-Day Sprint",
+    targetCompany: "Google",
+    duration: "90 days",
+    package: "50+ LPA",
+    progress: 65,
+    active: true,
+    startDate: "2023-10-15",
+    dailyCommitment: "2 hours",
+    completedTopics: ["Arrays", "Linked Lists", "Recursion"],
+    remainingTopics: ["DP", "Graphs", "System Design"],
+  },
+  {
+    id: 2,
+    title: "Amazon Quick Prep",
+    targetCompany: "Amazon",
+    duration: "30 days",
+    package: "20-50 LPA",
+    progress: 100,
+    active: false,
+    startDate: "2023-08-01",
+    dailyCommitment: "1.5 hours",
+    completedTopics: ["All Topics"],
+    remainingTopics: [],
+  },
+  {
+    id: 3,
+    title: "Microsoft Core Focus",
+    targetCompany: "Microsoft",
+    duration: "60 days",
+    package: "10-20 LPA",
+    progress: 0,
+    active: false,
+    startDate: "2023-11-01",
+    dailyCommitment: "1 hour",
+    completedTopics: [],
+    remainingTopics: ["Arrays", "Strings", "Sorting"],
+  },
+];
+
+export default plans;

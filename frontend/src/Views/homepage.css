@@ -1,0 +1,47 @@
+.container {
+  width: 100%;
+  height: 400px;
+  background: transparent;
+  position: absolute;
+  left: 0;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%; /* Make it twice the width for smooth looping */
+  height: 100%; /* Make it twice the height */
+  background-image: linear-gradient(
+      90deg,
+      rgba(37, 65, 137, 0.5) 1px,
+      transparent 1px
+    ),
+    linear-gradient(rgba(41, 62, 120, 0.5) 1px, transparent 1px);
+  background-size: 30px 30px;
+  animation: moveBackground 3s linear infinite;
+
+  /* Elliptical fade effect */
+  mask-image: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 1) 20%,
+    rgba(0, 0, 0, 0) 60%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 1) 20%,
+    rgba(0, 0, 0, 0) 60%
+  );
+}
+
+@keyframes moveBackground {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 30px; /* Matches the grid size for smooth looping */
+  }
+}

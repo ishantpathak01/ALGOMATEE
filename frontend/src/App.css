@@ -1,0 +1,29 @@
+.custom-scrollbar {
+  overflow-y: scroll !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+/* Scrollbar Track */
+.custom-scrollbar::-webkit-scrollbar-track {
+  border-radius: 4px; /* Optional: Rounded edges */
+}
+
+/* Scrollbar Thumb */
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 10px; /* Optional: Rounded edges */
+  cursor: pointer;
+}
+
+/* Scrollbar Hover Effect */
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #2a2f36; /* Darker shade on hover */
+}
+
+/* Firefox-specific scrollbar styling */
+.custom-scrollbar {
+  scrollbar-width: thin; /* Makes the scrollbar thinner */
+  scrollbar-color: #1d2127 #393f46; /* Thumb color and track color */
+}

@@ -1,0 +1,40 @@
+Rating of mentor..
+Cards view..
+Homepage animations..
+Logo..
+Loading animation..
+Chat bot && scroll up..
+Sidebar indicator..
+Code in terminal..
+Question redirect on recent submission...
+Button Disable till Login...
+--------------------------------------------
+
+Animation everywhere..
+Changed favicon and name.
+User can ask doubts using coins.
+update coins using submission daily.
+check transection history.
+search for topics added using name and description.
+added the sheet section.
+1 seet for users with limited information.
+1 sheet for mentors with full information. ( do not ask for tle/mle/statement initially. )
+add a sheet or practice section.
+fetch coding question in editor specifically.
+allow to add link of other platforms rather than leetcode only.
+add tags on questions.
+cashback of rewards...
+manage solved and unsolved problems in db.
+add tag of solved and unsolved in front of the question.
+add photos. and gifs + animations.
+default navigator.
+merge + score.
+
+----------------------------------------
+
+// score testing. Calculate the score andd show loader before api call..
+
+// btn disabling recheck.
+// code format in recent submissions.
+// edit user profile.
+// remove gap in HeaderBanner ( if  required ).
