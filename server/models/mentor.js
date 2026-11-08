@@ -105,6 +105,13 @@ const mentorSchema = mongoose.Schema({
     default: [],
   },
   Verified: { type: Boolean, default: false },
+  VerificationStatus: {
+    type: String,
+    enum: ["pending", "approved", "rejected"],
+    default: "pending",
+  },
+  RejectionReason: { type: String, default: "" },
+  ReviewedAt: { type: Date },
 });
 
 mentorSchema.pre("save", function (next) {

@@ -10,6 +10,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import sendVerificationOTP from "./../utils/mail/verification.js";
 import sendRegistered from "./../utils/mail/registered.js";
+import { notifyAdminNewMentor } from "./../utils/mail/mentorStatus.js";
 import sendResetOTP from "./../utils/mail/resetPassword.js";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
@@ -74,6 +75,9 @@ export const signup = async (req, res) => {
 
     await session.commitTransaction();
     session.endSession();
+
+    // Tell the admin there is a new application to review (never blocks sign-up).
+    notifyAdminNewMentor({ name: Name, email: Email }).catch(() => {});
 
     return res.json({
       status: 201,
@@ -338,6 +342,9 @@ export const updateMentorProfile = async (req, res) => {
         key !== "Password" &&
         key !== "Email" &&
         key !== "Verified" &&
+        key !== "VerificationStatus" &&
+        key !== "RejectionReason" &&
+        key !== "ReviewedAt" &&
         key != "_id"
       ) {
         user[key] = userData[key];
@@ -823,17 +830,12 @@ export const getChat = async (req, res) => {
   }
 };
 
+// Mentor applications are now reviewed by the admin only (see controllers/admin.js).
 export const getUnverifiedMentors = async (req, res) => {
-  try {
-    let mentors = await Mentor.find({ Verified: false });
-    return res.json({
-      status: 200,
-      message: "Unverified mentors fetched successfully.",
-      data: mentors,
-    });
-  } catch (error) {
-    return res.json({ status: 500, message: "Internal Server Error" });
-  }
+  return res.json({
+    status: 403,
+    message: "Mentor applications are reviewed by the admin.",
+  });
 };
 
 export const getUnverifiedArticles = async (req, res) => {
@@ -850,18 +852,10 @@ export const getUnverifiedArticles = async (req, res) => {
 };
 
 export const approveMentor = async (req, res) => {
-  try {
-    let mentor = await Mentor.findById(req.body.MentorId);
-    mentor.Verified = true;
-    await mentor.save();
-    // await redisClient.del("mentors:firstPage");
-    return res.json({
-      status: 200,
-      message: "Mentor verified ✅.",
-    });
-  } catch (error) {
-    return res.json({ status: 500, message: "Internal Server Error" });
-  }
+  return res.json({
+    status: 403,
+    message: "Only the admin can approve mentors.",
+  });
 };
 
 export const approveArticle = async (req, res) => {

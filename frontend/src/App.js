@@ -87,6 +87,7 @@ const CreateUserStudyPlan = lazy(() =>
 const UserDoubts = lazy(() => import("./Views/dashboard/user/doubts"));
 const ProblemsSheet = lazy(() => import("./Views/courseTopic/problemsSheet"));
 const PageNotFound = lazy(() => import("./Views/general/PageNotFound"));
+const AdminPanel = lazy(() => import("./Views/admin/adminPanel"));
 const AboutUs = lazy(() => import("./Views/general/AboutUs"));
 const ContactUs = lazy(() => import("./Views/general/ContactUs"));
 const TermAndConditions = lazy(() =>
@@ -319,6 +320,7 @@ function App() {
                     <Route path="questions" element={<MentorQuestions />} />
                     <Route path="management" element={<Management />} />
                   </Route>
+                  <Route path="/admin" element={<AdminPanel />} />
                   <Route
                     path="/*"
                     element={<PageNotFound></PageNotFound>}

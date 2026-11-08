@@ -199,7 +199,7 @@ function Management() {
               </motion.div>
             ) : mentors.length === 0 ? (
               <p className="opacity-80 mt-40 text-xl">
-                No unverified mentors available.
+                Mentor applications are now reviewed by the admin.
               </p>
             ) : (
               mentors.map((mentor) => (
