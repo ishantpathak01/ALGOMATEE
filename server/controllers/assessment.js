@@ -1,3 +1,4 @@
+import axios from "axios";
 import vm from "vm";
 import VerifiedArticle from "../models/articles/verifiedArticles.js";
 import User from "./../models/user.js";
@@ -10,6 +11,7 @@ import mongoose from "mongoose";
 import RewardModel from "../models/coinReward.js";
 import DevQuestion from "../models/Problems/development.js";
 import CalculateScore from "./../utils/ai/development.js";
+
 const { ObjectId } = mongoose.Types;
 
 export const addCodingProblem = async (req, res) => {
@@ -326,7 +328,40 @@ export const runCodingCode = async (req, res) => {
           stderr = err.message || String(err);
         }
       } else {
-        stdout = `Test ${i + 1} Input: ${tcInput || "(empty)"}\nExecution completed.`;
+        let codeToExecute = Code;
+        
+        // Harness for Java LeetCode-style submissions
+        if (lang === "java" && !Code.includes("public static void main")) {
+            // Dynamically extract the method name from the Solution class
+            const methodMatch = Code.match(/public\s+(?:\w+\s+)*(\w+)\s+([a-zA-Z0-9_]+)\s*\(/);
+            const methodName = methodMatch ? methodMatch[2] : "checkValidString";
+            
+            codeToExecute = `
+import java.util.*;
+${Code}
+public class Main {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        if(scanner.hasNext()) {
+            String input = scanner.next();
+            Solution sol = new Solution();
+            System.out.print(sol.${methodName}(input));
+        }
+    }
+}`;
+        }
+
+        try {
+            const response = await axios.post("http://localhost:8080/compile", {
+                language: lang,
+                code: codeToExecute,
+                input: tcInput
+            });
+            stdout = response.data.output || "";
+            stderr = response.data.stderr || "";
+        } catch (err) {
+            stderr = err?.response?.data?.error || err.message || String(err);
+        }
       }
 
       const actualTrimmed = (stdout || "").trim();
@@ -383,19 +418,97 @@ export const submitCodingCode = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { Language, Code, Id, QuestionId, AssignmentId } = req.body;
+    const { Language, Code, Id, QuestionId, AssignmentId, Testcases } = req.body;
 
     if (!Language || !Code || !Id || !QuestionId) {
       await session.abortTransaction();
       session.endSession();
       return res.json({ status: 400, message: "Insufficient data" });
     }
-    const totalTestCases = 10;
-    const passed = Math.floor(Math.random() * (totalTestCases + 1));
+    
+    // --- ACTUAL COMPILATION FOR SUBMISSION ---
+    const lang = (Language || "javascript").toLowerCase();
+    let problemTestcases = Testcases || [];
+
+    if ((!problemTestcases || problemTestcases.length === 0) && QuestionId) {
+      try {
+        const problem = await CodingProblem.findById(QuestionId);
+        if (problem && problem.Testcases && problem.Testcases.length > 0) {
+          problemTestcases = problem.Testcases;
+        }
+      } catch (e) {}
+    }
+
+    let passedCount = 0;
+    const totalTestCases = problemTestcases.length > 0 ? problemTestcases.length : 1;
+
+    for (let i = 0; i < problemTestcases.length; i++) {
+        const tc = problemTestcases[i];
+        const tcInput = tc.input !== undefined ? String(tc.input) : "";
+        const tcExpected = tc.output !== undefined ? String(tc.output).trim() : "";
+        let stdout = "";
+        let stderr = "";
+        let passed = false;
+
+        if (lang === "javascript" || lang === "js") {
+            try {
+                const sandbox = { console: { log: () => {}, error: () => {}, warn: () => {} }, input: tcInput };
+                const scriptCode = `const input = ${JSON.stringify(tcInput)};\n${Code}`;
+                vm.createContext(sandbox);
+                const result = vm.runInContext(scriptCode, sandbox, { timeout: 2000 });
+                if (result !== undefined) stdout = String(result);
+            } catch (err) {
+                stderr = err.message;
+            }
+        } else {
+            let codeToExecute = Code;
+            if (lang === "java" && !Code.includes("public static void main")) {
+                const methodMatch = Code.match(/public\s+(?:\w+\s+)*(\w+)\s+([a-zA-Z0-9_]+)\s*\(/);
+                const methodName = methodMatch ? methodMatch[2] : "checkValidString";
+                codeToExecute = `
+import java.util.*;
+${Code}
+public class Main {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        if(scanner.hasNext()) {
+            String input = scanner.next();
+            Solution sol = new Solution();
+            System.out.print(sol.${methodName}(input));
+        }
+    }
+}`;
+            }
+            try {
+                const response = await axios.post("http://localhost:8080/compile", {
+                    language: lang,
+                    code: codeToExecute,
+                    input: tcInput
+                });
+                stdout = response.data.output || "";
+                stderr = response.data.stderr || "";
+            } catch (err) {
+                stderr = err?.response?.data?.error || err.message;
+            }
+        }
+
+        const actualTrimmed = (stdout || "").trim();
+        if (tcExpected) {
+            passed = actualTrimmed === tcExpected || actualTrimmed.endsWith(tcExpected);
+        } else {
+            passed = !stderr;
+        }
+        if (passed) passedCount++;
+    }
+
+    const passed = passedCount;
     const failed = totalTestCases - passed;
     const newScore = (passed / totalTestCases) * 100;
+    // --- END ACTUAL COMPILATION ---
+
     const today = new Date().toISOString().split("T")[0];
     const user = await User.findById(Id).session(session);
+    
     if (passed == totalTestCases) {
       let rewardHistory = await RewardModel.findOne({ Id: Id });
       if (rewardHistory) {

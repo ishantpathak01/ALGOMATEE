@@ -27,15 +27,15 @@ app.post("/compile", (req, res) => {
     return res.status(400).json({ error: "Code exceeds size limit" });
   }
 
-  const filename = `script.${
+  // FIXED: Java files must be named exactly "Main.java" if they contain "public class Main"
+  const filename = language === "java" ? "Main.java" : `script.${
     language === "python"
       ? "py"
       : language === "cpp"
       ? "cpp"
-      : language === "java"
-      ? "java"
       : "js"
   }`;
+
   const filePath = path.join(__dirname, filename);
 
   fs.writeFileSync(filePath, code);
