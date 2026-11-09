@@ -365,7 +365,7 @@ public class Main {
             const fileName = lang === "java" ? "Main.java" : `script.${lang === 'python' ? 'py' : lang === 'cpp' ? 'cpp' : 'js'}`;
 
             // Send directly to the free Piston Code Execution API
-            const response = await axios.post("https://emacs.piston.rs/api/v2/execute", {
+      const response = await axios.post("https://emkc.org/api/v2/piston/execute", {
                 language: pistonEnv.language,
                 version: pistonEnv.version,
                 files: [
@@ -522,7 +522,7 @@ public class Main {
                 const pistonEnv = pistonLangMap[lang] || { language: lang, version: "*" };
                 const fileName = lang === "java" ? "Main.java" : `script.${lang === 'python' ? 'py' : lang === 'cpp' ? 'cpp' : 'js'}`;
 
-                const response = await axios.post("https://emacs.piston.rs/api/v2/execute", {
+                const response = await axios.post("https://emkc.org/api/v2/piston/execute", {
                     language: pistonEnv.language,
                     version: pistonEnv.version,
                     files: [{ name: fileName, content: codeToExecute }],
