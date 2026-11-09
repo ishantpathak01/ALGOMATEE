@@ -20,7 +20,8 @@ import {
   XCircle,
   Users,
   X,
-  LogOut
+  LogOut,
+  AlertTriangle
 } from "lucide-react";
 
 export default function ContestArena() {
@@ -38,9 +39,15 @@ export default function ContestArena() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [totalScore, setTotalScore] = useState(0);
   
-  // Contest Rules State
+  // Contest Rules & Warning States
   const [hasStarted, setHasStarted] = useState(false);
   const [isDisqualified, setIsDisqualified] = useState(false);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [warningCount, setWarningCount] = useState(0);
+  
+  // Custom Quit Modal States
+  const [showQuitModal, setShowQuitModal] = useState(false);
+  const [quitText, setQuitText] = useState("");
 
   // Split-pane layout dimensions
   const [leftWidth, setLeftWidth] = useState(window.innerWidth * 0.48);
@@ -60,21 +67,38 @@ export default function ContestArena() {
     fetchContest();
   }, [contestId]);
 
-  // Handle Fullscreen & Disqualification Logic
+  // Handle Fullscreen & 3 Warnings Logic
   useEffect(() => {
     const disqualifiedKey = `disqualified_${contestId}_${user?._id || 'guest'}`;
+    const warningsKey = `warnings_${contestId}_${user?._id || 'guest'}`;
     
-    // 1. Check if they were previously disqualified
+    // Check if previously disqualified
     if (localStorage.getItem(disqualifiedKey)) {
       setIsDisqualified(true);
     }
+    
+    // Load previous warnings
+    const savedWarnings = parseInt(localStorage.getItem(warningsKey) || "0");
+    setWarningCount(savedWarnings);
 
-    // 2. Listen for exiting full screen
+    // Listen for exiting full screen
     const handleFullscreenChange = () => {
+      // If they exit fullscreen after starting, and aren't already disqualified
       if (!document.fullscreenElement && hasStarted) {
-        // They exited full screen after starting! Disqualify them.
-        localStorage.setItem(disqualifiedKey, "true");
-        setIsDisqualified(true);
+        const currentWarnings = parseInt(localStorage.getItem(warningsKey) || "0");
+        
+        // If they already had 3 warnings, this exit gets them disqualified!
+        if (currentWarnings >= 3) {
+          localStorage.setItem(disqualifiedKey, "true");
+          setIsDisqualified(true);
+          setShowWarningModal(false);
+        } else {
+          // Otherwise, give them a warning
+          const newWarningCount = currentWarnings + 1;
+          localStorage.setItem(warningsKey, newWarningCount.toString());
+          setWarningCount(newWarningCount);
+          setShowWarningModal(true);
+        }
       }
     };
 
@@ -91,11 +115,28 @@ export default function ContestArena() {
     }
   };
 
-  const handleQuit = async () => {
-    if (window.confirm("Are you sure you want to quit? You CANNOT rejoin later!")) {
+  const handleReturnToFullscreen = async () => {
+    try {
+      await document.documentElement.requestFullscreen();
+      setShowWarningModal(false);
+    } catch (err) {
+      toast.error("You must allow full screen to continue the contest.");
+    }
+  };
+
+  // Quit functionality
+  const handleQuitClick = () => {
+    setShowQuitModal(true);
+    setQuitText(""); // Reset text input when modal opens
+  };
+
+  const confirmQuit = async () => {
+    if (quitText.trim().toLowerCase() === "quit") {
       const disqualifiedKey = `disqualified_${contestId}_${user?._id || 'guest'}`;
       localStorage.setItem(disqualifiedKey, "true");
       setIsDisqualified(true);
+      setShowQuitModal(false);
+      
       if (document.fullscreenElement) {
         await document.exitFullscreen();
       }
@@ -151,7 +192,6 @@ export default function ContestArena() {
       setActiveTerminalTab("result");
 
       if (execRes.passed === execRes.total) {
-        // Record submission in contest
         await submitContestProblem(contestId, {
           problemId: activeProblem._id,
           code,
@@ -181,6 +221,7 @@ export default function ContestArena() {
     }
   };
 
+  // Rendering Layers
   if (loading) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-gray-950 text-white space-y-3 flex-col">
@@ -197,7 +238,7 @@ export default function ContestArena() {
         <XCircle className="w-16 h-16 text-red-500" />
         <h2 className="text-3xl font-bold text-red-400">Contest Terminated</h2>
         <p className="text-gray-400 max-w-md text-center">
-          You have exited the contest or left full-screen mode. In accordance with the rules, you cannot rejoin this contest.
+          You have exited the contest or exceeded the full-screen warning limit. In accordance with the rules, you cannot rejoin this contest.
         </p>
         <Link to="/contests" className="px-6 py-2 mt-4 bg-blue-600 rounded-lg hover:bg-blue-700 transition font-bold">
           Back to Contests Hub
@@ -219,7 +260,8 @@ export default function ContestArena() {
           <h3 className="text-xl font-semibold text-red-400 mb-4 flex items-center gap-2"><Sparkles className="w-5 h-5"/> Strict Contest Rules</h3>
           <ul className="list-disc list-inside text-gray-300 space-y-3 text-lg">
             <li>This contest requires <b>Full Screen</b> mode.</li>
-            <li>If you press <kbd className="bg-gray-800 px-1 rounded">ESC</kbd>, switch tabs, or exit full screen, you will be <b>permanently disqualified</b>.</li>
+            <li>If you press <kbd className="bg-gray-800 px-1 rounded">ESC</kbd> or switch tabs, you will receive a warning.</li>
+            <li>You have a maximum of <b>3 warnings</b> before permanent disqualification.</li>
             <li>You cannot pause or rejoin once started.</li>
           </ul>
         </div>
@@ -233,15 +275,78 @@ export default function ContestArena() {
     );
   }
 
+  // Blocking Screen 3: The Full-screen Warning Modal
+  if (showWarningModal) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-gray-950 text-white flex-col space-y-6 relative z-50">
+        <AlertTriangle className="w-24 h-24 text-yellow-500 animate-pulse" />
+        <h2 className="text-4xl font-bold text-yellow-400">Warning {warningCount} of 3</h2>
+        <p className="text-gray-400 max-w-lg text-center text-lg">
+          You have exited full-screen mode. This is a violation of the contest rules.
+          <br/><br/>
+          If you do this <b className="text-white">{4 - warningCount} more time(s)</b>, you will be permanently disqualified and your score will be voided.
+        </p>
+        <button 
+          onClick={handleReturnToFullscreen}
+          className="px-8 py-4 bg-blue-600 hover:bg-blue-700 font-bold rounded-xl transition text-xl shadow-lg mt-4"
+        >
+          Return to Full Screen
+        </button>
+      </div>
+    );
+  }
+
   // Main Arena
   return (
-    <div className="h-screen w-full flex flex-col bg-gray-950 text-white overflow-hidden pt-16">
+    <div className="h-screen w-full flex flex-col bg-gray-950 text-white overflow-hidden pt-16 relative">
+      
+      {/* Type 'Quit' Modal Overlay */}
+      {showQuitModal && (
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
+            <h3 className="text-xl font-bold text-red-400 flex items-center gap-2">
+              <AlertTriangle className="w-6 h-6" />
+              Quit Contest?
+            </h3>
+            <p className="text-gray-300">
+              Are you sure you want to quit? You will be permanently disqualified and your progress cannot be recovered.
+            </p>
+            <p className="text-sm text-gray-400">
+              Type <strong className="text-white select-none">quit</strong> below to confirm.
+            </p>
+            <input 
+              type="text"
+              value={quitText}
+              onChange={(e) => setQuitText(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
+              placeholder="Type 'quit' here"
+              autoComplete="off"
+            />
+            <div className="flex space-x-3 justify-end pt-2">
+              <button 
+                onClick={() => setShowQuitModal(false)}
+                className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold transition"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmQuit}
+                disabled={quitText.trim().toLowerCase() !== 'quit'}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold transition"
+              >
+                Confirm Quit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Contest Arena Top Bar */}
       <header className="h-14 px-4 bg-gray-900 border-b border-gray-800 flex items-center justify-between z-30 shrink-0">
         <div className="flex items-center space-x-3">
           <button
-            onClick={handleQuit}
-            className="flex items-center space-x-1 text-xs text-white px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 transition-all border border-red-800"
+            onClick={handleQuitClick}
+            className="flex items-center space-x-1 text-xs text-white px-2.5 py-1.5 rounded-lg bg-red-600/90 hover:bg-red-700 transition-all border border-red-800"
             title="Quit Contest Permanently"
           >
             <LogOut className="w-4 h-4" />
