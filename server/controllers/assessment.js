@@ -332,7 +332,6 @@ export const runCodingCode = async (req, res) => {
         
         // Harness for Java LeetCode-style submissions
         if (lang === "java" && !Code.includes("public static void main")) {
-            // Dynamically extract the method name from the Solution class
             const methodMatch = Code.match(/public\s+(?:\w+\s+)*(\w+)\s+([a-zA-Z0-9_]+)\s*\(/);
             const methodName = methodMatch ? methodMatch[2] : "checkValidString";
             
@@ -352,22 +351,54 @@ public class Main {
         }
 
         try {
-            const response = await axios.post("http://127.0.0.1:8080/compile", {
-                language: lang,
-                code: codeToExecute,
-                input: tcInput
+            // Map your languages to Piston API requirements
+            const pistonLangMap = {
+                "python": { language: "python", version: "3.10.0" },
+                "cpp": { language: "c++", version: "10.2.0" },
+                "java": { language: "java", version: "15.0.2" },
+                "js": { language: "javascript", version: "18.15.0" },
+                "javascript": { language: "javascript", version: "18.15.0" },
+                "c": { language: "c", version: "10.2.0" }
+            };
+
+            const pistonEnv = pistonLangMap[lang] || { language: lang, version: "*" };
+            const fileName = lang === "java" ? "Main.java" : `script.${lang === 'python' ? 'py' : lang === 'cpp' ? 'cpp' : 'js'}`;
+
+            // Send directly to the free Piston Code Execution API
+            const response = await axios.post("https://emacs.piston.rs/api/v2/execute", {
+                language: pistonEnv.language,
+                version: pistonEnv.version,
+                files: [
+                    {
+                        name: fileName,
+                        content: codeToExecute
+                    }
+                ],
+                stdin: tcInput,
+                compile_timeout: 10000,
+                run_timeout: 5000
             });
-            stdout = response.data.output || "";
-            stderr = response.data.stderr || "";
+
+            // Parse Piston's response format
+            if (response.data.compile && response.data.compile.code !== 0) {
+                stderr = response.data.compile.stderr || response.data.compile.output;
+            } else if (response.data.run) {
+                stdout = response.data.run.stdout || "";
+                stderr = response.data.run.stderr || "";
+                if (response.data.run.code !== 0 && !stderr) {
+                    stderr = response.data.run.output;
+                }
+            } else {
+                stderr = "Unknown error occurred during execution.";
+            }
         } catch (err) {
-            stderr = err?.response?.data?.error || err.message || String(err);
+            stderr = err?.response?.data?.message || err.message || String(err);
         }
       }
 
       const actualTrimmed = (stdout || "").trim();
       if (tcExpected) {
-        passed =
-          actualTrimmed === tcExpected || actualTrimmed.endsWith(tcExpected);
+        passed = actualTrimmed === tcExpected || actualTrimmed.endsWith(tcExpected);
       } else {
         passed = !stderr;
       }
@@ -380,8 +411,7 @@ public class Main {
         testIndex: i + 1,
         input: tcInput,
         expectedOutput: tcExpected,
-        actualOutput:
-          actualTrimmed || (stderr ? `Error: ${stderr}` : "No output"),
+        actualOutput: actualTrimmed || (stderr ? `Error: ${stderr}` : "No output"),
         passed,
         stderr,
       });
@@ -425,8 +455,7 @@ export const submitCodingCode = async (req, res) => {
       session.endSession();
       return res.json({ status: 400, message: "Insufficient data" });
     }
-    
-    // --- ACTUAL COMPILATION FOR SUBMISSION ---
+
     const lang = (Language || "javascript").toLowerCase();
     let problemTestcases = Testcases || [];
 
@@ -479,16 +508,42 @@ public class Main {
     }
 }`;
             }
+
             try {
-                const response = await axios.post("http://localhost:8080/compile", {
-                    language: lang,
-                    code: codeToExecute,
-                    input: tcInput
+                const pistonLangMap = {
+                    "python": { language: "python", version: "3.10.0" },
+                    "cpp": { language: "c++", version: "10.2.0" },
+                    "java": { language: "java", version: "15.0.2" },
+                    "js": { language: "javascript", version: "18.15.0" },
+                    "javascript": { language: "javascript", version: "18.15.0" },
+                    "c": { language: "c", version: "10.2.0" }
+                };
+
+                const pistonEnv = pistonLangMap[lang] || { language: lang, version: "*" };
+                const fileName = lang === "java" ? "Main.java" : `script.${lang === 'python' ? 'py' : lang === 'cpp' ? 'cpp' : 'js'}`;
+
+                const response = await axios.post("https://emacs.piston.rs/api/v2/execute", {
+                    language: pistonEnv.language,
+                    version: pistonEnv.version,
+                    files: [{ name: fileName, content: codeToExecute }],
+                    stdin: tcInput,
+                    compile_timeout: 10000,
+                    run_timeout: 5000
                 });
-                stdout = response.data.output || "";
-                stderr = response.data.stderr || "";
+
+                if (response.data.compile && response.data.compile.code !== 0) {
+                    stderr = response.data.compile.stderr || response.data.compile.output;
+                } else if (response.data.run) {
+                    stdout = response.data.run.stdout || "";
+                    stderr = response.data.run.stderr || "";
+                    if (response.data.run.code !== 0 && !stderr) {
+                        stderr = response.data.run.output;
+                    }
+                } else {
+                    stderr = "Unknown error occurred during execution.";
+                }
             } catch (err) {
-                stderr = err?.response?.data?.error || err.message;
+                stderr = err?.response?.data?.message || err.message || String(err);
             }
         }
 
@@ -504,11 +559,10 @@ public class Main {
     const passed = passedCount;
     const failed = totalTestCases - passed;
     const newScore = (passed / totalTestCases) * 100;
-    // --- END ACTUAL COMPILATION ---
 
     const today = new Date().toISOString().split("T")[0];
     const user = await User.findById(Id).session(session);
-    
+
     if (passed == totalTestCases) {
       let rewardHistory = await RewardModel.findOne({ Id: Id });
       if (rewardHistory) {
@@ -534,15 +588,12 @@ public class Main {
           ],
         });
       }
-
       await rewardHistory.save({ session });
       await user.save({ session });
     }
 
     if (AssignmentId) {
-      const assignment = await Assignment.findById(AssignmentId).session(
-        session
-      );
+      const assignment = await Assignment.findById(AssignmentId).session(session);
       if (!assignment) {
         await session.abortTransaction();
         session.endSession();
@@ -569,7 +620,6 @@ public class Main {
       }).session(session);
 
       if (myAssignment) {
-        const currentScore = myAssignment.Questions[QuestionId] || 0;
         myAssignment.Questions = {
           ...myAssignment.Questions,
           [QuestionId]: Math.max(
@@ -585,45 +635,21 @@ public class Main {
           return res.json({ status: 404, message: "User not found" });
         }
         await AssignmentAttendie.create(
-          [
-            {
-              Name: user.Name,
-              Email: user.Email,
-              Id,
-              Assignment: AssignmentId,
-              Questions: { [QuestionId]: newScore },
-            },
-          ],
+          [{ Name: user.Name, Email: user.Email, Id, Assignment: AssignmentId, Questions: { [QuestionId]: newScore } }],
           { session }
         );
       }
     }
 
-    const submission = await Submissions.findOne(
-      { Id },
-      { RecentSubmissions: { $slice: 1 } }
-    );
-
+    const submission = await Submissions.findOne({ Id }, { RecentSubmissions: { $slice: 1 } });
     const lastSubmission = submission?.RecentSubmissions?.[0];
-
-    const updateData = {
-      $inc: { [`Submissions.${today}`]: 1 },
-    };
+    const updateData = { $inc: { [`Submissions.${today}`]: 1 } };
 
     if (failed === 0 && lastSubmission?.QuestionId !== QuestionId) {
       const ques = await CodingProblem.findById(QuestionId);
-
       updateData.$push = {
         RecentSubmissions: {
-          $each: [
-            {
-              QuestionId,
-              Title: ques.Name,
-              Code,
-              Language,
-              Timestamp: new Date(),
-            },
-          ],
+          $each: [{ QuestionId, Title: ques.Name, Code, Language, Timestamp: new Date() }],
           $position: 0,
           $slice: 10,
         },
@@ -634,11 +660,7 @@ public class Main {
       { $addToSet: { SolvedQuestions: QuestionId } },
       { upsert: true, new: true }
     );
-
-    await Submissions.findOneAndUpdate({ Id }, updateData, {
-      upsert: true,
-      new: true,
-    });
+    await Submissions.findOneAndUpdate({ Id }, updateData, { upsert: true, new: true });
 
     await session.commitTransaction();
     session.endSession();
@@ -668,15 +690,10 @@ export const getSubmissions = async (req, res) => {
 export const generateCodingAssessment = async (req, res) => {
   try {
     const { Id } = req.body;
-
     if (!Id) {
       return res.json({ status: 400, message: "Insufficient data" });
     }
-
-    const article = await VerifiedArticle.findOne({
-      _id: new Object(Id),
-    });
-
+    const article = await VerifiedArticle.findOne({ _id: new Object(Id) });
     if (!article || !article.CodingPool) {
       return res.json({ status: 404, message: "Article not found" });
     }
@@ -685,9 +702,7 @@ export const generateCodingAssessment = async (req, res) => {
       const randomIndex = Math.floor(Math.random() * article.CodingPool.length);
       selectedIds.add(article.CodingPool[randomIndex]);
     }
-    const problems = await CodingProblem.find({
-      _id: { $in: Array.from(selectedIds) },
-    });
+    const problems = await CodingProblem.find({ _id: { $in: Array.from(selectedIds) } });
 
     return res.json({
       status: 200,
@@ -695,10 +710,7 @@ export const generateCodingAssessment = async (req, res) => {
       data: problems,
     });
   } catch (error) {
-    return res.json({
-      status: 500,
-      message: "Internal Server Error",
-    });
+    return res.json({ status: 500, message: "Internal Server Error" });
   }
 };
 
@@ -708,28 +720,18 @@ export const generateChoiceBasedAssessment = async (req, res) => {
     if (!Id) {
       return res.json({ status: 400, message: "Insufficient data" });
     }
-
-    const article = await VerifiedArticle.findOne({
-      _id: new Object(Id),
-    });
-
+    const article = await VerifiedArticle.findOne({ _id: new Object(Id) });
     if (!article || !article.ChoiceBasedPool) {
       return res.json({ status: 404, message: "Article not found" });
     }
     const selectedIds = new Set();
-    while (
-      selectedIds.size < Math.min(20, article.ChoiceBasedPool.length - 1)
-    ) {
-      const randomIndex = Math.floor(
-        Math.random() * article.ChoiceBasedPool.length
-      );
+    while (selectedIds.size < Math.min(20, article.ChoiceBasedPool.length - 1)) {
+      const randomIndex = Math.floor(Math.random() * article.ChoiceBasedPool.length);
       selectedIds.add(article.ChoiceBasedPool[randomIndex]);
     }
 
     const problems = await ChoicebasedProblem.find(
-      {
-        _id: { $in: Array.from(selectedIds) },
-      },
+      { _id: { $in: Array.from(selectedIds) } },
       { "Options.IsValid": 0 }
     );
     return res.json({
@@ -738,12 +740,10 @@ export const generateChoiceBasedAssessment = async (req, res) => {
       data: problems,
     });
   } catch (error) {
-    return res.json({
-      status: 500,
-      message: "Internal Server Error",
-    });
+    return res.json({ status: 500, message: "Internal Server Error" });
   }
 };
+
 export const checkMCQScore = async (req, res) => {
   try {
     const { answers } = req.body;
@@ -752,7 +752,6 @@ export const checkMCQScore = async (req, res) => {
     }
 
     let score = 0;
-
     for (const key of Object.keys(answers)) {
       const question = await ChoicebasedProblem.findById(key);
       if (!question) continue;
@@ -763,7 +762,6 @@ export const checkMCQScore = async (req, res) => {
         score++;
       }
     }
-
     return res.json({
       status: 200,
       message: "Assessment checked successfully.",
@@ -771,10 +769,7 @@ export const checkMCQScore = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    return res.json({
-      status: 500,
-      message: "Internal Server Error",
-    });
+    return res.json({ status: 500, message: "Internal Server Error" });
   }
 };
 
@@ -809,12 +804,7 @@ export const getSuggestions = async (req, res) => {
 export const assignmentScore = async (req, res) => {
   try {
     const { Id, Assignment } = req.query;
-
-    let score = await AssignmentAttendie.findOne({
-      Id,
-      Assignment: new ObjectId(Assignment),
-    });
-
+    let score = await AssignmentAttendie.findOne({ Id, Assignment: new ObjectId(Assignment) });
     return res.json({ status: 200, data: score.Questions });
   } catch (error) {
     return res.json({ status: 500, message: "Internal Server Error" });
@@ -845,10 +835,7 @@ export const addDevQuestion = async (req, res) => {
         problem[key] = req.body[key];
       }
       await problem.save();
-      return res.json({
-        status: 201,
-        message: "Question updated successfully.",
-      });
+      return res.json({ status: 201, message: "Question updated successfully." });
     } else {
       const problem = new DevQuestion(req.body);
       await problem.save();
@@ -878,22 +865,12 @@ export const getDevSheet = async (req, res) => {
             data: [
               { $skip: (Page - 1) * Limit },
               { $limit: Limit },
-              {
-                $project: {
-                  _id: 1,
-                  Name: 1,
-                },
-              },
+              { $project: { _id: 1, Name: 1 } },
             ],
           },
         },
       ]);
-
-      return res.json({
-        status: 200,
-        message: "Sheet fetched successfully.",
-        data: problems,
-      });
+      return res.json({ status: 200, message: "Sheet fetched successfully.", data: problems });
     }
   } catch (error) {
     return res.json({ status: 500, message: "Internal Server Error" });
@@ -910,12 +887,8 @@ export const deleteDevProblem = async (req, res) => {
         message: "You aren't the author of this problem.",
       });
     }
-
     const deleted = await DevQuestion.findByIdAndDelete(QuestionId);
-    return res.json({
-      status: 200,
-      message: "Question deleted successfully.",
-    });
+    return res.json({ status: 200, message: "Question deleted successfully." });
   } catch (error) {
     return res.json({ status: 500, message: "Internal Server Error" });
   }
@@ -925,35 +898,20 @@ export const getDevProblem = async (req, res) => {
   try {
     const problem = await DevQuestion.findById(req.query.Id);
     if (!problem) {
-      return res.json({
-        status: 404,
-        message: "Question not found.",
-      });
+      return res.json({ status: 404, message: "Question not found." });
     }
     if (req.query.UserType == "Mentor") {
-      return res.json({
-        status: 200,
-        message: "Question fetched successfully.",
-        data: problem,
-      });
+      return res.json({ status: 200, message: "Question fetched successfully.", data: problem });
     } else {
       const filteredProblem = {
         ...problem.toObject({
           transform: (doc, ret) => {
-            ret.Files = ret.Files.map(({ name, boilerplate }) => ({
-              name,
-              content: boilerplate,
-            }));
+            ret.Files = ret.Files.map(({ name, boilerplate }) => ({ name, content: boilerplate }));
             return ret;
           },
         }),
       };
-
-      return res.json({
-        status: 200,
-        message: "Question fetched successfully.",
-        data: filteredProblem,
-      });
+      return res.json({ status: 200, message: "Question fetched successfully.", data: filteredProblem });
     }
   } catch (error) {
     return res.json({ status: 500, message: "Internal Server Error" });
@@ -963,15 +921,8 @@ export const getDevProblem = async (req, res) => {
 export const submitDevCode = async (req, res) => {
   try {
     const question = await DevQuestion.findById(req.body.QuestionId);
-    const result = await CalculateScore({
-      ValidFiles: question.Files,
-      TestingFiles: req.body.Files,
-    });
-    return res.json({
-      status: 200,
-      message: "Submitted successfully",
-      data: result,
-    });
+    const result = await CalculateScore({ ValidFiles: question.Files, TestingFiles: req.body.Files });
+    return res.json({ status: 200, message: "Submitted successfully", data: result });
   } catch (error) {
     return res.json({ status: 500, message: "Internal Server Error" });
   }
@@ -983,26 +934,14 @@ export const generateDevelopmentAssessment = async (req, res) => {
     if (!Id) {
       return res.json({ status: 400, message: "Insufficient data" });
     }
-
-    const article = await VerifiedArticle.findOne({
-      _id: new Object(Id),
-    });
-
+    const article = await VerifiedArticle.findOne({ _id: new Object(Id) });
     if (!article || !article.CodingPool) {
       return res.json({ status: 404, message: "Article not found" });
     }
     const randomId = Math.floor(Math.random() * article.CodingPool.length);
-
     const problem = await DevQuestion.findById(article.CodingPool[randomId]);
-    return res.json({
-      status: 200,
-      message: "Assessment fetched successfully.",
-      data: problem,
-    });
+    return res.json({ status: 200, message: "Assessment fetched successfully.", data: problem });
   } catch (error) {
-    return res.json({
-      status: 500,
-      message: "Internal Server Error",
-    });
+    return res.json({ status: 500, message: "Internal Server Error" });
   }
 };
