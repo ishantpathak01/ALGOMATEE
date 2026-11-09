@@ -11,6 +11,7 @@ import classroomRoutes from "./routes/classroom.js";
 import resumeAnalyzerRoutes from "./routes/resumeAnalyzer.js";
 import chatbotRoutes from "./routes/chatbot.js";
 import adminRoutes from "./routes/admin.js";
+import contestRoutes from "./routes/contest.js";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
@@ -71,6 +72,7 @@ app.use("/section", classroomRoutes);
 app.use("/resume", resumeAnalyzerRoutes);
 app.use("/chatbot", chatbotRoutes);
 app.use("/admin", adminRoutes);
+app.use("/contest", contestRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {

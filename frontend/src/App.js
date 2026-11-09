@@ -42,6 +42,7 @@ const MentorMentorship = lazy(() =>
 const MentorCourses = lazy(() => import("./Views/dashboard/mentor/courses"));
 const NewArticle = lazy(() => import("./Views/dashboard/mentor/newArticle"));
 const Management = lazy(() => import("./Views/dashboard/mentor/management"));
+const MentorContests = lazy(() => import("./Views/dashboard/mentor/contests"));
 const ClassroomMentor = lazy(() =>
   import("./Views/dashboard/mentor/classroom")
 );
@@ -318,6 +319,7 @@ function App() {
                       element={<DoubtSessionMentor />}
                     />
                     <Route path="questions" element={<MentorQuestions />} />
+                    <Route path="contests" element={<MentorContests />} />
                     <Route path="management" element={<Management />} />
                   </Route>
                   <Route path="/admin" element={<AdminPanel />} />

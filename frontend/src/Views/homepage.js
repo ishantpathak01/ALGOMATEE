@@ -3,18 +3,21 @@ import { motion } from "framer-motion";
 import Courses from "./../components/courses";
 import FAQSection from "../components/general/FAQs";
 import GetInTouch from "../components/general/getInTouch";
-import { CheckCircle, Code, Users, Terminal, Rocket } from "lucide-react";
+import { CheckCircle, Code, Users, Terminal, Rocket, Trophy } from "lucide-react";
 import { SmartToyOutlined, KeyboardArrowUp } from "@mui/icons-material";
 import ChatbotModal from "../components/general/chattingAgent";
 import CompanySlider from "../components/general/slider";
+import { getPublicContests } from "../APIs/contest";
+import { Link } from "react-router-dom";
 
 import Snowfall from './../animations/snow.js'
 
-
 import "./homepage.css";
+
 function Homepage() {
   const [showScroll, setShowScroll] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [contests, setContests] = useState([]);
 
   useEffect(() => {
     const checkScrollTop = () => {
@@ -24,8 +27,21 @@ function Homepage() {
     return () => window.removeEventListener("scroll", checkScrollTop);
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      const res = await getPublicContests({ limit: 6 });
+      if (res?.status === 200) setContests(res.data || []);
+    })();
+  }, []);
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const statusColor = {
+    live: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+    upcoming: "bg-blue-500/20 text-blue-300 border-blue-500/40",
+    ended: "bg-slate-500/20 text-slate-300 border-slate-500/40",
   };
 
   return (
@@ -48,16 +64,8 @@ function Homepage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.3 }}
         >
-          Welcome to <span className="text-blue-400 font-bold">AlgoMate</span>,
-          your hub for mastering technical skills! Explore{" "}
-          <span className="text-blue-300 font-medium">
-            DSA, full-stack development,
-          </span>{" "}
-          and{" "}
-          <span className="text-blue-300 font-medium">
-            technical interview prep
-          </span>{" "}
-          with engaging content and expert guidance.
+          Master DSA, Development & Core CS with structured learning paths,
+          mentor support, weekly contests and real coding practice.
         </motion.p>
       </div>
 
@@ -87,6 +95,72 @@ function Homepage() {
             your hiring chances.
           </p>
         </div>
+      </div>
+
+      {/* Weekly Contests Section */}
+      <div className="max-w-5xl mx-auto px-6 mt-20">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <Trophy className="text-yellow-400 w-8 h-8" />
+            <h2 className="text-3xl font-bold">Weekly Coding Contests</h2>
+          </div>
+        </div>
+        <p className="text-gray-400 mb-6 max-w-2xl">
+          Mentors create weekly contests with their own DSA questions plus curated LeetCode & GeeksforGeeks problems. Join, practice and climb the ranks.
+        </p>
+
+        {contests.length === 0 ? (
+          <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-8 text-center text-gray-400">
+            No active contests right now. Mentors can create weekly contests from their dashboard.
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-4">
+            {contests.slice(0, 4).map((c) => (
+              <div
+                key={c._id}
+                className="bg-gray-800 border border-gray-700 hover:border-blue-500/50 rounded-xl p-5 transition"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-semibold text-lg">{c.title}</h3>
+                  <span
+                    className={`shrink-0 text-xs px-2 py-0.5 rounded-full border ${
+                      statusColor[c.status] || statusColor.ended
+                    }`}
+                  >
+                    {c.status}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-400 mt-1">
+                  by {c.mentorName || "Mentor"} · {c.problems?.length || 0} problems · {c.type}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {new Date(c.startTime).toLocaleString()} →{" "}
+                  {new Date(c.endTime).toLocaleString()}
+                </p>
+                {c.description && (
+                  <p className="text-sm text-gray-300 mt-2 line-clamp-2">
+                    {c.description}
+                  </p>
+                )}
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {(c.problems || []).slice(0, 4).map((p, i) => (
+                    <span
+                      key={i}
+                      className="text-[11px] bg-gray-900 border border-gray-600 px-2 py-0.5 rounded"
+                    >
+                      {p.platform}: {p.title}
+                    </span>
+                  ))}
+                  {(c.problems || []).length > 4 && (
+                    <span className="text-[11px] text-gray-500">
+                      +{c.problems.length - 4} more
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Additional Section */}
