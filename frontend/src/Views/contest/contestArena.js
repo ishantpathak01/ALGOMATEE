@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, Navigate } from "react-router-dom";
 import { Resizable } from "re-resizable";
 import Editor from "./../../components/practice/coding/editor";
 import ProblemStatement from "./../../components/practice/coding/problemStatement";
@@ -20,6 +20,7 @@ import {
   XCircle,
   Users,
   X,
+  LogOut
 } from "lucide-react";
 
 export default function ContestArena() {
@@ -36,6 +37,10 @@ export default function ContestArena() {
   const [solvedProblemIds, setSolvedProblemIds] = useState([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [totalScore, setTotalScore] = useState(0);
+  
+  // Contest Rules State
+  const [hasStarted, setHasStarted] = useState(false);
+  const [isDisqualified, setIsDisqualified] = useState(false);
 
   // Split-pane layout dimensions
   const [leftWidth, setLeftWidth] = useState(window.innerWidth * 0.48);
@@ -54,6 +59,48 @@ export default function ContestArena() {
     };
     fetchContest();
   }, [contestId]);
+
+  // Handle Fullscreen & Disqualification Logic
+  useEffect(() => {
+    const disqualifiedKey = `disqualified_${contestId}_${user?._id || 'guest'}`;
+    
+    // 1. Check if they were previously disqualified
+    if (localStorage.getItem(disqualifiedKey)) {
+      setIsDisqualified(true);
+    }
+
+    // 2. Listen for exiting full screen
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && hasStarted) {
+        // They exited full screen after starting! Disqualify them.
+        localStorage.setItem(disqualifiedKey, "true");
+        setIsDisqualified(true);
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, [hasStarted, contestId, user]);
+
+  const handleStartContest = async () => {
+    try {
+      await document.documentElement.requestFullscreen();
+      setHasStarted(true);
+    } catch (err) {
+      toast.error("Could not enable full screen. Please allow full screen to start.");
+    }
+  };
+
+  const handleQuit = async () => {
+    if (window.confirm("Are you sure you want to quit? You CANNOT rejoin later!")) {
+      const disqualifiedKey = `disqualified_${contestId}_${user?._id || 'guest'}`;
+      localStorage.setItem(disqualifiedKey, "true");
+      setIsDisqualified(true);
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      }
+    }
+  };
 
   const activeProblem = contest?.problems?.[activeProblemIndex] || {
     title: "Loading problem...",
@@ -143,18 +190,63 @@ export default function ContestArena() {
     );
   }
 
+  // Blocking Screen 1: Disqualified or Quit
+  if (isDisqualified) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-gray-950 text-white flex-col space-y-4">
+        <XCircle className="w-16 h-16 text-red-500" />
+        <h2 className="text-3xl font-bold text-red-400">Contest Terminated</h2>
+        <p className="text-gray-400 max-w-md text-center">
+          You have exited the contest or left full-screen mode. In accordance with the rules, you cannot rejoin this contest.
+        </p>
+        <Link to="/contests" className="px-6 py-2 mt-4 bg-blue-600 rounded-lg hover:bg-blue-700 transition font-bold">
+          Back to Contests Hub
+        </Link>
+      </div>
+    );
+  }
+
+  // Blocking Screen 2: Waiting to Start
+  if (!hasStarted) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-gray-950 text-white flex-col space-y-6 relative">
+        <Link to="/contests" className="absolute top-6 left-6 flex items-center space-x-2 text-gray-400 hover:text-white">
+            <ChevronLeft className="w-5 h-5"/> Back
+        </Link>
+        <Trophy className="w-20 h-20 text-yellow-500" />
+        <h1 className="text-4xl font-bold text-center">{contest?.title || "Contest"}</h1>
+        <div className="bg-gray-900 p-8 rounded-xl max-w-lg border border-gray-800 shadow-xl">
+          <h3 className="text-xl font-semibold text-red-400 mb-4 flex items-center gap-2"><Sparkles className="w-5 h-5"/> Strict Contest Rules</h3>
+          <ul className="list-disc list-inside text-gray-300 space-y-3 text-lg">
+            <li>This contest requires <b>Full Screen</b> mode.</li>
+            <li>If you press <kbd className="bg-gray-800 px-1 rounded">ESC</kbd>, switch tabs, or exit full screen, you will be <b>permanently disqualified</b>.</li>
+            <li>You cannot pause or rejoin once started.</li>
+          </ul>
+        </div>
+        <button 
+          onClick={handleStartContest}
+          className="px-10 py-4 bg-green-600 hover:bg-green-700 font-bold rounded-xl transition text-xl shadow-lg shadow-green-900/40"
+        >
+          I Agree, Start Contest
+        </button>
+      </div>
+    );
+  }
+
+  // Main Arena
   return (
     <div className="h-screen w-full flex flex-col bg-gray-950 text-white overflow-hidden pt-16">
       {/* Contest Arena Top Bar */}
       <header className="h-14 px-4 bg-gray-900 border-b border-gray-800 flex items-center justify-between z-30 shrink-0">
         <div className="flex items-center space-x-3">
-          <Link
-            to="/contests"
-            className="flex items-center space-x-1 text-xs text-gray-400 hover:text-white px-2.5 py-1.5 rounded-lg bg-gray-800/80 hover:bg-gray-800 transition-all border border-gray-700/60"
+          <button
+            onClick={handleQuit}
+            className="flex items-center space-x-1 text-xs text-white px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 transition-all border border-red-800"
+            title="Quit Contest Permanently"
           >
-            <ChevronLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back</span>
-          </Link>
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline font-bold">Quit Contest</span>
+          </button>
 
           <div className="h-5 w-px bg-gray-800 hidden sm:block"></div>
 
