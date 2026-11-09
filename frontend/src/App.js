@@ -97,6 +97,11 @@ const PrivacyAndPolicy = lazy(() => import("./Views/general/PrivacyAndPolicy"));
 const AssessmentTest = lazy(() => import("./Views/assessment/assessment"));
 const CodingSheet = lazy(() => import("./Views/codingSheet"));
 const ResumeAnalyzer = lazy(() => import("./Views/resumeAnalyzer"));
+const ContestsHub = lazy(() => import("./Views/contest/contestsHub"));
+const ContestArena = lazy(() => import("./Views/contest/contestArena"));
+const MentorContests = lazy(() =>
+  import("./Views/dashboard/mentor/contests")
+);
 
 function App() {
   const [isMobile, setIsMobile] = useState(true);
@@ -230,6 +235,21 @@ function App() {
                     }
                   />
 
+                  <Route
+                    path="/contests"
+                    element={
+                      <>
+                        <ContestsHub />
+                        <Footer />
+                      </>
+                    }
+                  />
+
+                  <Route
+                    path="/contests/:contestId"
+                    element={<ContestArena />}
+                  />
+
                   {/* Protected Routes */}
                   <Route
                     path="/dashboard/user"
@@ -318,6 +338,7 @@ function App() {
                       element={<DoubtSessionMentor />}
                     />
                     <Route path="questions" element={<MentorQuestions />} />
+                    <Route path="contests" element={<MentorContests />} />
                     <Route path="management" element={<Management />} />
                   </Route>
                   <Route path="/admin" element={<AdminPanel />} />

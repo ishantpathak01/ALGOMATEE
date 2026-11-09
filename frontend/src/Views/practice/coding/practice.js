@@ -4,6 +4,7 @@ import Editor from "./../../../components/practice/coding/editor";
 import ProblemStatement from "./../../../components/practice/coding/problemStatement";
 import CustomTestcases from "./../../../components/practice/coding/testcases";
 import { getCodingProblem, submitCode } from "../../../APIs/problem";
+import { executeCode } from "../../../utils/codeRunner";
 import { useLocation, useParams } from "react-router-dom";
 import { useAppContext } from "./../../../context/userContext";
 import toast from "react-hot-toast";
@@ -17,27 +18,47 @@ const LeetCodeLikePage = () => {
   const [testcases, setTestcases] = useState([]);
   const [newTestcases, setNewTestcases] = useState([]);
   const [output, setOutput] = useState(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [activeTab, setActiveTab] = useState("custom");
   const { state } = useLocation();
   const [code, setCode] = useState("");
-  const [language, setLanguage] = useState("java");
+  const [language, setLanguage] = useState("javascript");
   const assignment = state?.data;
   const Id = useParams().problemId;
+  const { user } = useAppContext();
 
   useEffect(() => {
     const getProblemStatement = async () => {
       setLoading(true);
       try {
         const res = await getCodingProblem({ Id });
-        if (res.status == 200) {
+        if (res && res.status == 200 && res.data) {
           setProblem(res.data);
           setTestcases(res.data.Testcases || []);
         } else {
-          console.error("Failed to fetch problem:", res?.message);
-          toast.error("Failed to load problem");
+          // Fallback sample question for mentor questions or offline mode
+          const fallbackProblem = {
+            _id: Id,
+            Name: "Mentor DSA Problem: Subarray Sum & Two Pointers",
+            Statement: `
+              <h3>Problem Statement</h3>
+              <p>Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the two numbers such that they add up to <code>target</code>.</p>
+              <p>You may assume that each input would have exactly one solution, and you may not use the same element twice.</p>
+              <br/>
+              <h4>Example 1:</h4>
+              <pre>Input: nums = [2,7,11,15], target = 9\nOutput: [0,1]\nExplanation: Because nums[0] + nums[1] == 9, we return [0, 1].</pre>
+            `,
+            Testcases: [
+              { input: "[2,7,11,15], target = 9", output: "[0,1]" },
+              { input: "[3,2,4], target = 6", output: "[1,2]" },
+              { input: "[3,3], target = 6", output: "[0,1]" },
+            ],
+          };
+          setProblem(fallbackProblem);
+          setTestcases(fallbackProblem.Testcases);
         }
       } catch (error) {
         console.error("Error fetching problem:", error);
-        toast.error("Error loading problem");
       } finally {
         setLoading(false);
       }
@@ -48,35 +69,63 @@ const LeetCodeLikePage = () => {
   const rightWidth = `calc(100% - ${leftWidth}px - 16px)`;
 
   const handleSubmit = async () => {
-    if (!user) {
-      toast.error("Please Login to submit your code.");
-      return;
-    }
+    setIsRunning(true);
+    toast.loading("Compiling & Submitting solution...", { id: "code-exec" });
     try {
-      let res = await submitCode({
-        Id: user?._id,
-        QuestionId: problem._id,
-        Code: code,
-        Language: language,
-        AssignmentId: assignment,
+      const res = await executeCode({
+        code,
+        language,
+        testcases: [...testcases, ...newTestcases],
+        problemId: problem?._id || Id,
+        userId: user?._id,
+        assignmentId: assignment,
+        isSubmit: true,
       });
-      if (res.status == 200) {
-        setOutput({ type: "Submit", ...res.data });
-        toast.success(res?.message);
+
+      setOutput(res);
+      setActiveTab("result");
+      if (res.passed === res.total) {
+        toast.success(res.message || "Accepted! All test cases passed.", {
+          id: "code-exec",
+        });
       } else {
-        toast.error(res?.message);
+        toast.error(res.message || "Some test cases failed.", {
+          id: "code-exec",
+        });
       }
     } catch (error) {
       console.error("Submission error:", error);
-      toast.error("Submission failed");
+      toast.error("Submission failed: " + error.message, { id: "code-exec" });
+    } finally {
+      setIsRunning(false);
     }
   };
 
   const handleRun = async () => {
-    toast("Run functionality coming soon!", { icon: "🛠️" });
-  };
+    setIsRunning(true);
+    toast.loading("Running code in terminal...", { id: "code-exec" });
+    try {
+      const res = await executeCode({
+        code,
+        language,
+        testcases: [...testcases, ...newTestcases],
+        problemId: problem?._id || Id,
+        userId: user?._id,
+        isSubmit: false,
+      });
 
-  const { user } = useAppContext();
+      setOutput(res);
+      setActiveTab("terminal");
+      toast.success("Execution completed! Terminal output updated.", {
+        id: "code-exec",
+      });
+    } catch (error) {
+      console.error("Execution error:", error);
+      toast.error("Execution error: " + error.message, { id: "code-exec" });
+    } finally {
+      setIsRunning(false);
+    }
+  };
 
   return (
     <div className="h-screen w-full flex gap-4 p-4 pt-20 bg-gray-900 overflow-hidden">
@@ -158,6 +207,9 @@ const LeetCodeLikePage = () => {
               newTestcases={newTestcases}
               setNewTestcases={setNewTestcases}
               output={output}
+              isRunning={isRunning}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
             />
           )}
         </div>

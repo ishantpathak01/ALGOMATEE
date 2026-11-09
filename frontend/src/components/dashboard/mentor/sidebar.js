@@ -10,6 +10,7 @@ import {
   People as MentorshipIcon,
   Chat as ChatsIcon,
   QuestionAnswer as QuestionsIcon,
+  EmojiEvents as ContestIcon,
   Settings as ManagementIcon,
   Menu as MenuIcon,
   ChevronLeft as CollapseIcon,
@@ -54,6 +55,7 @@ function Sidebar() {
     { id: "mentorship", label: "Mentorship", icon: <MentorshipIcon /> },
     { id: "chats", label: "Chats", icon: <ChatsIcon /> },
     { id: "questions", label: "Questions", icon: <QuestionsIcon /> },
+    { id: "contests", label: "Contests", icon: <ContestIcon /> },
     { id: "management", label: "Management", icon: <ManagementIcon /> },
   ];
 

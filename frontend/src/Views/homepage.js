@@ -7,6 +7,7 @@ import { CheckCircle, Code, Users, Terminal, Rocket } from "lucide-react";
 import { SmartToyOutlined, KeyboardArrowUp } from "@mui/icons-material";
 import ChatbotModal from "../components/general/chattingAgent";
 import CompanySlider from "../components/general/slider";
+import WeeklyContestBanner from "../components/contest/weeklyContestBanner";
 
 import Snowfall from './../animations/snow.js'
 
@@ -60,6 +61,9 @@ function Homepage() {
           with engaging content and expert guidance.
         </motion.p>
       </div>
+
+      {/* Weekly Coding Contest Section */}
+      <WeeklyContestBanner />
 
       {/* Features Section */}
       <div className="max-w-5xl mx-auto px-6 mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">

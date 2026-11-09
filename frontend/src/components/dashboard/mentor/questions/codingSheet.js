@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Terminal } from "lucide-react";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import DeleteForeverOutlinedIcon from "@mui/icons-material/DeleteForeverOutlined";
 import { getCodingSheet, deleteCodingProblem } from "../../../../APIs/problem";
@@ -103,21 +105,31 @@ function Questions({ setView, setId }) {
                   >
                     <div className="flex flex-row justify-between items-center w-full">
                       <h2>{question.Name}</h2>
-                      <div className="flex flex-row justify-center items-center space-x-6">
-                        <a
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          href={question.Link}
+                      <div className="flex flex-row justify-center items-center space-x-4">
+                        <Link
+                          to={`/practice/coding/${question._id}`}
+                          className="flex items-center space-x-1 text-xs px-2.5 py-1 rounded-md bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white transition-all border border-blue-500/40"
+                          title="Open and run in Code Runner Terminal"
                         >
-                          <img
-                            src={
-                              platformsLogo[question.Platform] ||
-                              platformsLogo.AlgoMate
-                            }
-                            alt="Leetcode"
-                            className="h-6 w-6"
-                          />
-                        </a>
+                          <Terminal className="w-3.5 h-3.5" />
+                          <span>Test Terminal</span>
+                        </Link>
+                        {question.Link && (
+                          <a
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            href={question.Link}
+                          >
+                            <img
+                              src={
+                                platformsLogo[question.Platform] ||
+                                platformsLogo.AlgoMate
+                              }
+                              alt="Platform"
+                              className="h-6 w-6"
+                            />
+                          </a>
+                        )}
                         <button
                           onClick={() => handleEditProblem(question)}
                           className="text-blue-400 cursor-pointer"

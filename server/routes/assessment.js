@@ -10,6 +10,7 @@ import {
   getChoiceBasedProblem,
   deleteChoiceBasedProblem,
   submitCodingCode,
+  runCodingCode,
   generateCodingAssessment,
   generateChoiceBasedAssessment,
   getSolvedCodingQuestionsList,
@@ -67,6 +68,7 @@ route.post("/generateChoiceBasedAssessment", generateChoiceBasedAssessment);
 route.post("/generateDevelopmentAssessment", generateDevelopmentAssessment);
 route.get("/getSolvedCodingQuestionsList", getSolvedCodingQuestionsList);
 route.post("/coding/submitCode", submitCodingCode);
+route.post("/coding/runCode", runCodingCode);
 route.post("/checkMCQScore", checkMCQScore);
 route.get("/assignmentScore", verifyToken, assignmentScore);
 route.get("/getSuggestions", getSuggestions);

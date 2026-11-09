@@ -107,6 +107,17 @@ export const submitCode = async (data) => {
   }
 };
 
+export const runCode = async (data) => {
+  try {
+    let res = await axios.post(`${SERVER}/problem/coding/runCode`, data, {
+      withCredentials: true,
+    });
+    return res.data;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
 export const generateCodingAssessment = async (data) => {
   try {
     let res = await axios.post(
