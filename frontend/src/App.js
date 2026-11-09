@@ -235,20 +235,31 @@ function App() {
                     }
                   />
 
-                  <Route
+                                    <Route
                     path="/contests"
                     element={
-                      <>
-                        <ContestsHub />
-                        <Footer />
-                      </>
+                      <UserRoute
+                        element={
+                          <>
+                            <ContestsHub />
+                            <Footer />
+                          </>
+                        }
+                        redirectTo="/auth/user"
+                      />
                     }
                   />
 
                   <Route
                     path="/contests/:contestId"
-                    element={<ContestArena />}
+                    element={
+                      <UserRoute
+                        element={<ContestArena />}
+                        redirectTo="/auth/user"
+                      />
+                    }
                   />
+
 
                   {/* Protected Routes */}
                   <Route
