@@ -365,47 +365,92 @@ function Questions({ id, setView }) {
             </div>
           </div>
 
-          <div className="pl-40 pr-40 flex flex-col">
-            <h2 className="text-xl border-b-2 pb-2 w-full mb-4 font-serif tracking-wide">
-              Testcases
-            </h2>
-            {testcases.map((testcase, index) => (
-              <div
-                key={index}
-                className="mb-4 flex flex-row items-center justify-center space-x-4 p-2"
-              >
-                <input
-                  type="text"
-                  className="p-2 pl-4 text-sm border-2 rounded bg-transparent focus:outline-none"
-                  placeholder="Input"
-                  value={testcase.input}
-                  onChange={(e) =>
-                    handleTestcaseChange(index, "input", e.target.value)
-                  }
-                />
-                <input
-                  type="text"
-                  className="p-2 pl-4 border-2 text-sm rounded bg-transparent  focus:outline-none"
-                  placeholder="Output"
-                  value={testcase.output}
-                  onChange={(e) =>
-                    handleTestcaseChange(index, "output", e.target.value)
-                  }
-                />
-                <button
-                  onClick={() => handleRemoveTestcase(index)}
-                  className="text-red-500 bg-slate-400 bg-opacity-10 rounded-md px-4 py-1 hover:scale-95 duration-200"
-                >
-                  <DeleteForeverOutlinedIcon></DeleteForeverOutlinedIcon>
-                </button>
+          <div className="max-w-4xl mx-auto w-full px-4 flex flex-col mt-6">
+            <div className="flex items-center justify-between border-b-2 border-slate-700 pb-3 mb-4">
+              <div>
+                <h2 className="text-xl font-bold tracking-wide text-white flex items-center gap-2">
+                  <span>Test Cases</span>
+                  <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-blue-600/30 text-blue-300 border border-blue-500/40">
+                    {testcases.length} assigned
+                  </span>
+                </h2>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Assign inputs and expected outputs for the terminal code runner to evaluate.
+                </p>
               </div>
-            ))}
-            <div className="w-full flex justify-center">
+
               <button
+                type="button"
                 onClick={handleAddTestcase}
-                className="bg-slate-200 text-slate-900 mt-4 p-2 rounded mb-10 w-60 bg-opacity-60 hover:bg-slate-800 hover:text-white duration-300 "
+                className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs px-4 py-2 rounded-xl transition-all shadow-md shadow-blue-600/30 flex items-center gap-1.5"
               >
-                Add Testcase
+                <AddCircleOutlineOutlinedIcon fontSize="small" />
+                <span>+ Add Test Case</span>
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {testcases.map((testcase, index) => (
+                <div
+                  key={index}
+                  className="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-3 shadow-lg"
+                >
+                  <span className="text-xs font-mono font-bold text-blue-400 shrink-0">
+                    Test #{index + 1}
+                  </span>
+
+                  <div className="flex-1 w-full space-y-1">
+                    <label className="text-[11px] text-gray-400 font-semibold">
+                      Input
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full p-2.5 pl-3 text-xs border border-slate-600 rounded-xl bg-gray-950 text-white focus:outline-none focus:border-blue-500 font-mono"
+                      placeholder="e.g. [2,7,11,15] 9"
+                      value={testcase.input}
+                      onChange={(e) =>
+                        handleTestcaseChange(index, "input", e.target.value)
+                      }
+                    />
+                  </div>
+
+                  <div className="flex-1 w-full space-y-1">
+                    <label className="text-[11px] text-gray-400 font-semibold">
+                      Expected Output
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full p-2.5 pl-3 border border-slate-600 text-xs rounded-xl bg-gray-950 text-emerald-300 focus:outline-none focus:border-blue-500 font-mono"
+                      placeholder="e.g. [0,1]"
+                      value={testcase.output}
+                      onChange={(e) =>
+                        handleTestcaseChange(index, "output", e.target.value)
+                      }
+                    />
+                  </div>
+
+                  <div className="sm:pt-5">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTestcase(index)}
+                      className="text-red-400 hover:text-red-300 bg-red-950/40 hover:bg-red-900/60 border border-red-800/40 rounded-xl p-2.5 transition-all"
+                      title="Delete test case"
+                    >
+                      <DeleteForeverOutlinedIcon fontSize="small" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="w-full flex justify-center mt-4 mb-8">
+              <button
+                type="button"
+                onClick={handleAddTestcase}
+                className="bg-slate-700 hover:bg-slate-600 text-white font-semibold text-xs py-2.5 px-6 rounded-xl border border-slate-600 transition-all flex items-center gap-1.5"
+              >
+                <AddCircleOutlineOutlinedIcon fontSize="small" />
+                <span>+ Add Another Test Case</span>
               </button>
             </div>
           </div>

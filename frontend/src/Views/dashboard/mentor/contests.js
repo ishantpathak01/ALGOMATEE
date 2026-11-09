@@ -136,6 +136,32 @@ export default function MentorContests() {
     setProblems(updated);
   };
 
+  const handleAddProblemTestCase = (probIdx) => {
+    const updated = [...problems];
+    if (!updated[probIdx].testcases) updated[probIdx].testcases = [];
+    updated[probIdx].testcases.push({ input: "", output: "" });
+    setProblems(updated);
+  };
+
+  const handleRemoveProblemTestCase = (probIdx, tcIdx) => {
+    const updated = [...problems];
+    if ((updated[probIdx].testcases || []).length <= 1) {
+      toast.error("At least one testcase is required per problem.");
+      return;
+    }
+    updated[probIdx].testcases = updated[probIdx].testcases.filter(
+      (_, i) => i !== tcIdx
+    );
+    setProblems(updated);
+  };
+
+  const handleUpdateProblemTestCase = (probIdx, tcIdx, field, value) => {
+    const updated = [...problems];
+    if (!updated[probIdx].testcases) updated[probIdx].testcases = [];
+    updated[probIdx].testcases[tcIdx][field] = value;
+    setProblems(updated);
+  };
+
   const handleCreateContest = async (e) => {
     e.preventDefault();
     if (!title.trim()) {
@@ -516,6 +542,81 @@ export default function MentorContests() {
                           }
                           className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-xs text-white"
                         />
+                      </div>
+
+                      {/* Test Cases for this Problem */}
+                      <div className="pt-2 border-t border-gray-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] font-bold text-gray-300 flex items-center gap-1.5">
+                            <span>Test Cases (Inputs & Expected Outputs)</span>
+                            <span className="text-gray-500 font-mono">
+                              ({(prob.testcases || []).length})
+                            </span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => handleAddProblemTestCase(idx)}
+                            className="text-[11px] px-2.5 py-1 rounded-lg bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/40 transition-all font-semibold flex items-center gap-1"
+                          >
+                            <PlusCircle className="w-3 h-3" />
+                            <span>Add Test Case</span>
+                          </button>
+                        </div>
+
+                        <div className="space-y-2">
+                          {(prob.testcases || []).map((tc, tcIdx) => (
+                            <div
+                              key={tcIdx}
+                              className="p-2.5 rounded-xl bg-gray-900 border border-gray-800 flex flex-col sm:flex-row items-center gap-2"
+                            >
+                              <span className="text-[10px] font-mono text-gray-400 font-bold shrink-0">
+                                Test #{tcIdx + 1}
+                              </span>
+                              <div className="flex-1 w-full">
+                                <input
+                                  type="text"
+                                  placeholder="Input (e.g. [2,7,11,15] 9)"
+                                  value={tc.input || ""}
+                                  onChange={(e) =>
+                                    handleUpdateProblemTestCase(
+                                      idx,
+                                      tcIdx,
+                                      "input",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-xs text-white font-mono"
+                                />
+                              </div>
+                              <div className="flex-1 w-full">
+                                <input
+                                  type="text"
+                                  placeholder="Expected Output (e.g. [0,1])"
+                                  value={tc.output || ""}
+                                  onChange={(e) =>
+                                    handleUpdateProblemTestCase(
+                                      idx,
+                                      tcIdx,
+                                      "output",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-xs text-emerald-300 font-mono"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleRemoveProblemTestCase(idx, tcIdx)
+                                }
+                                className="text-gray-500 hover:text-red-400 p-1.5 transition-all"
+                                title="Remove test case"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   ))}
