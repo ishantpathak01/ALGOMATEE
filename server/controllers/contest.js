@@ -1,350 +1,297 @@
 import Contest from "../models/Contest.js";
 import User from "../models/user.js";
+import { executeOne, outputsMatch } from "../utils/compiler/execute.js";
 
-// Initial seed data for default weekly contest (contains LeetCode, GFG, and Mentor problems)
-export const defaultWeeklyContestData = {
-  title: "AlgoMate Weekly Contest #42",
-  contestNumber: 42,
-  isWeekly: true,
-  description:
-    "Curated challenge designed by top mentors to sharpen your problem-solving skills across LeetCode patterns, GFG algorithms, and real interview DSA problems.",
-  mentorName: "Priya Sharma",
-  mentorBio: "Staff Engineer @ Google · 8+ yrs CP & Interview Mentor",
-  mentorAvatar:
-    "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
-  startTime: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-  endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-  durationMinutes: 90,
-  rewardCoins: 350,
-  status: "active",
-  difficulty: "Intermediate",
-  problems: [
-    {
-      title: "Longest Substring Without Repeating Characters",
-      source: "LeetCode",
-      externalUrl:
-        "https://leetcode.com/problems/longest-substring-without-repeating-characters/",
-      difficulty: "Medium",
-      points: 100,
-      statement:
-        "Given a string `s`, find the length of the longest substring without duplicate characters. Implement an optimal O(n) sliding window approach.",
-      inputFormat: "A single string s",
-      outputFormat: "Integer representing maximum substring length",
-      constraints: "0 <= s.length <= 5 * 10^4",
-      tags: ["Sliding Window", "Hash Map", "String"],
-      testcases: [
-        {
-          input: "abcabcbb",
-          output: "3",
-          isHidden: false,
-          explanation: "The answer is 'abc', with length 3.",
-        },
-        {
-          input: "bbbbb",
-          output: "1",
-          isHidden: false,
-          explanation: "The answer is 'b', with length 1.",
-        },
-        {
-          input: "pwwkew",
-          output: "3",
-          isHidden: false,
-          explanation: "The answer is 'wke', with length 3.",
-        },
-      ],
-      mentorHint:
-        "Keep track of the last seen index of each character with a hashmap or array of 128 chars.",
-    },
-    {
-      title: "Detect Cycle in an Undirected Graph",
-      source: "GeeksForGeeks",
-      externalUrl:
-        "https://www.geeksforgeeks.org/problems/detect-cycle-in-an-undirected-graph/1",
-      difficulty: "Medium",
-      points: 150,
-      statement:
-        "Given an undirected graph with V vertices and E edges, determine whether the graph contains a cycle or not using BFS or DFS traversal.",
-      inputFormat:
-        "V and E followed by edge pairs, or adjacency list representation",
-      outputFormat: "1 if cycle exists, 0 otherwise",
-      constraints: "1 <= V, E <= 10^5",
-      tags: ["Graph", "BFS", "DFS", "Disjoint Set"],
-      testcases: [
-        {
-          input: "5 5\n0 1\n1 2\n2 3\n3 4\n4 1",
-          output: "1",
-          isHidden: false,
-          explanation: "Edges 1-2-3-4-1 form a cycle.",
-        },
-        {
-          input: "4 3\n0 1\n1 2\n2 3",
-          output: "0",
-          isHidden: false,
-          explanation: "The graph is a tree without cycles.",
-        },
-      ],
-      mentorHint:
-        "In undirected graphs, if an adjacent vertex is already visited and not the parent of current vertex, a cycle is present.",
-    },
-    {
-      title: "Maximum XOR Subarray with Bounded Length (Mentor's Special)",
-      source: "AlgoMate",
-      externalUrl: "",
-      difficulty: "Hard",
-      points: 200,
-      statement:
-        "Given an array of integers arr[] and an integer K, find the maximum XOR sum of any contiguous subarray of size at most K. This problem was designed by Mentor Priya to test advanced Trie and Prefix-XOR mastery.",
-      inputFormat: "Array length N, maximum size K, followed by N integers",
-      outputFormat: "Maximum XOR sum value",
-      constraints: "1 <= K <= N <= 10^5, 0 <= arr[i] <= 10^9",
-      tags: ["Trie", "Bit Manipulation", "Sliding Window"],
-      testcases: [
-        {
-          input: "4 2\n1 2 3 4",
-          output: "7",
-          isHidden: false,
-          explanation: "Subarray [3, 4] gives 3 XOR 4 = 7.",
-        },
-        {
-          input: "5 3\n8 1 2 12 1",
-          output: "15",
-          isHidden: false,
-          explanation: "Subarray [2, 12, 1] gives 2^12^1 = 15.",
-        },
-      ],
-      mentorHint:
-        "Maintain a sliding Trie storing prefix XORs for the sliding window of size K.",
-    },
-  ],
-  leaderboard: [
-    {
-      userId: "u1",
-      userName: "Aman Verma",
-      avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Aman",
-      score: 450,
-      problemsSolved: 3,
-      finishTimeMinutes: 48,
-      rank: 1,
-    },
-    {
-      userId: "u2",
-      userName: "Rohan Patel",
-      avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Rohan",
-      score: 350,
-      problemsSolved: 2,
-      finishTimeMinutes: 52,
-      rank: 2,
-    },
-    {
-      userId: "u3",
-      userName: "Sneha Mukherjee",
-      avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Sneha",
-      score: 250,
-      problemsSolved: 2,
-      finishTimeMinutes: 65,
-      rank: 3,
-    },
-    {
-      userId: "u4",
-      userName: "Karthik Nair",
-      avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Karthik",
-      score: 100,
-      problemsSolved: 1,
-      finishTimeMinutes: 30,
-      rank: 4,
-    },
-  ],
+export const WRONG_PENALTY_MINUTES = 5;
+
+const isId = (id) => /^[a-f0-9]{24}$/i.test(String(id || ""));
+
+/** Never send other people's code or hidden expected outputs to the browser. */
+const sanitize = (contestDoc) => {
+  const c = contestDoc.toObject ? contestDoc.toObject() : { ...contestDoc };
+  delete c.submissions;
+  delete c.participants;
+  c.problems = (c.problems || []).map((p) => ({
+    ...p,
+    testcases: (p.testcases || []).map((t) =>
+      t.isHidden ? { ...t, output: "", explanation: "" } : t
+    ),
+  }));
+  c.leaderboard = computeLeaderboard(contestDoc);
+  return c;
 };
+
+/**
+ * Leaderboard computed ONLY from real stored submissions.
+ *  - Points of a problem count once, when its first Accepted submission arrives.
+ *  - Time = minutes from the participant's entry to each accepted submission
+ *    + 5 minutes for every wrong submission made on that problem before it.
+ *  - Rank: more points first; tie -> lower total time first.
+ */
+export function computeLeaderboard(contest) {
+  const problems = contest.problems || [];
+  const pointsOf = {};
+  problems.forEach((p) => (pointsOf[String(p._id)] = p.points || 0));
+
+  const entered = {};
+  (contest.participants || []).forEach((p) => (entered[p.userId] = p));
+
+  const subs = [...(contest.submissions || [])].sort(
+    (a, b) => new Date(a.submittedAt) - new Date(b.submittedAt)
+  );
+
+  const rows = {};
+  const ensure = (userId, userName) => {
+    if (!rows[userId]) {
+      const part = entered[userId];
+      rows[userId] = {
+        userId,
+        userName: part?.userName || userName || "Coder",
+        avatar: part?.avatar || "",
+        score: 0,
+        problemsSolved: 0,
+        finishTimeMinutes: 0,
+        wrongSubmissions: 0,
+        solvedProblemIds: [],
+        _wrong: {},
+        _solved: {},
+      };
+    }
+    return rows[userId];
+  };
+
+  (contest.participants || []).forEach((p) => ensure(p.userId, p.userName));
+
+  for (const s of subs) {
+    const row = ensure(s.userId, s.userName);
+    const pid = String(s.problemId);
+    if (row._solved[pid]) continue; // already solved: later submissions don't matter
+    if (s.isAccepted || s.status === "Accepted") {
+      const wrong = row._wrong[pid] || 0;
+      row._solved[pid] = true;
+      row.score += pointsOf[pid] ?? s.pointsEarned ?? 0;
+      row.problemsSolved += 1;
+      row.finishTimeMinutes += (s.minutesFromEntry || 0) + wrong * WRONG_PENALTY_MINUTES;
+      row.wrongSubmissions += wrong;
+      row.solvedProblemIds.push(pid);
+    } else {
+      row._wrong[pid] = (row._wrong[pid] || 0) + 1;
+    }
+  }
+
+  const list = Object.values(rows).map(({ _wrong, _solved, ...r }) => r);
+  list.sort((a, b) => b.score - a.score || a.finishTimeMinutes - b.finishTimeMinutes);
+  list.forEach((r, i) => (r.rank = i + 1));
+  return list;
+}
 
 export const getWeeklyContest = async (req, res) => {
   try {
-    let contest = await Contest.findOne({ isWeekly: true, status: "active" })
-      .sort({ createdAt: -1 });
-
-    if (!contest) {
-      // Find latest weekly or seed default
-      contest = await Contest.findOne({ isWeekly: true }).sort({ createdAt: -1 });
-      if (!contest) {
-        try {
-          contest = await Contest.create(defaultWeeklyContestData);
-        } catch (seedErr) {
-          return res.status(200).json({
-            status: 200,
-            data: defaultWeeklyContestData,
-            message: "Weekly contest loaded (in-memory mode)",
-          });
-        }
-      }
-    }
-
-    return res.status(200).json({ status: 200, data: contest });
+    const contest = await Contest.findOne({ isWeekly: true, status: "active" }).sort({ createdAt: -1 });
+    if (!contest) return res.status(200).json({ status: 200, data: null, message: "No active contest right now." });
+    return res.status(200).json({ status: 200, data: sanitize(contest) });
   } catch (err) {
-    return res.status(200).json({
-      status: 200,
-      data: defaultWeeklyContestData,
-      message: "Loaded fallback contest data",
-    });
+    return res.status(500).json({ status: 500, data: null, message: err.message });
   }
 };
 
 export const getAllContests = async (req, res) => {
   try {
-    let contests = await Contest.find().sort({ createdAt: -1 });
-    if (!contests || contests.length === 0) {
-      contests = [defaultWeeklyContestData];
-    }
-    return res.status(200).json({ status: 200, data: contests });
+    const contests = await Contest.find().sort({ createdAt: -1 });
+    return res.status(200).json({ status: 200, data: contests.map(sanitize) });
   } catch (err) {
-    return res.status(200).json({ status: 200, data: [defaultWeeklyContestData] });
+    return res.status(500).json({ status: 500, data: [], message: err.message });
   }
 };
 
 export const getContestById = async (req, res) => {
   try {
-    const { id } = req.params;
-    let contest = null;
-    if (id && id.length === 24) {
-      contest = await Contest.findById(id);
-    }
-    if (!contest) {
-      // Return default weekly contest if matching or fallback
-      contest = defaultWeeklyContestData;
-    }
-    return res.status(200).json({ status: 200, data: contest });
+    if (!isId(req.params.id)) return res.status(404).json({ status: 404, data: null, message: "Contest not found." });
+    const contest = await Contest.findById(req.params.id);
+    if (!contest) return res.status(404).json({ status: 404, data: null, message: "Contest not found." });
+    return res.status(200).json({ status: 200, data: sanitize(contest) });
   } catch (err) {
-    return res.status(200).json({ status: 200, data: defaultWeeklyContestData });
+    return res.status(500).json({ status: 500, data: null, message: err.message });
   }
 };
 
 export const createContest = async (req, res) => {
   try {
-    const {
-      title,
-      description,
-      mentorName,
-      mentorBio,
-      mentorAvatar,
-      durationMinutes,
-      rewardCoins,
-      difficulty,
-      problems,
-      startTime,
-      endTime,
-      isWeekly,
-    } = req.body;
+    const { title, description, mentorName, mentorBio, mentorAvatar, durationMinutes, rewardCoins, difficulty, problems, startTime, endTime, isWeekly } = req.body;
 
-    if (!title || !problems || problems.length === 0) {
-      return res.status(400).json({
-        status: 400,
-        message: "Contest title and at least one problem are required.",
-      });
+    if (!title || !Array.isArray(problems) || problems.length === 0) {
+      return res.status(400).json({ status: 400, message: "Contest title and at least one problem are required." });
+    }
+    for (const p of problems) {
+      if (!(Number(p.points) > 0)) {
+        return res.status(400).json({ status: 400, message: `Set points (> 0) for "${p.title || "a problem"}".` });
+      }
+      if (!p.testcases || p.testcases.length === 0 || p.testcases.some((t) => !String(t.output ?? "").trim())) {
+        return res.status(400).json({ status: 400, message: `Every test case of "${p.title || "a problem"}" needs an expected output.` });
+      }
     }
 
     const newContest = await Contest.create({
       title,
-      description: description || "Weekly Coding Contest assigned by Mentor",
+      description: description || "",
       mentorName: mentorName || "AlgoMate Mentor",
-      mentorBio: mentorBio || "Competitive Programming Mentor",
+      mentorBio: mentorBio || "",
       mentorAvatar: mentorAvatar || "",
       durationMinutes: durationMinutes || 90,
-      rewardCoins: rewardCoins || 250,
+      rewardCoins: rewardCoins || 0,
       difficulty: difficulty || "Intermediate",
-      problems,
+      problems: problems.map((p) => ({ ...p, points: Number(p.points) })),
       startTime: startTime || new Date(),
       endTime: endTime || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       isWeekly: isWeekly !== undefined ? isWeekly : true,
       status: "active",
-      leaderboard: [],
     });
 
-    return res.status(201).json({
-      status: 201,
-      message: "Contest created successfully!",
-      data: newContest,
-    });
+    return res.status(201).json({ status: 201, message: "Contest created successfully!", data: sanitize(newContest) });
   } catch (err) {
-    return res.status(500).json({
-      status: 500,
-      message: err.message || "Failed to create contest.",
-    });
+    return res.status(500).json({ status: 500, message: err.message || "Failed to create contest." });
   }
 };
 
-export const submitContestProblem = async (req, res) => {
+/** Participant presses "Start": the server stores the entry time ONCE. */
+export const enterContest = async (req, res) => {
   try {
     const { contestId } = req.params;
-    const { problemId, code, language, userId, userName } = req.body;
+    if (!isId(contestId)) return res.status(404).json({ status: 404, message: "Contest not found." });
+    const contest = await Contest.findById(contestId);
+    if (!contest) return res.status(404).json({ status: 404, message: "Contest not found." });
 
-    let contest = null;
-    if (contestId && contestId.length === 24) {
-      contest = await Contest.findById(contestId);
-    }
+    const now = new Date();
+    if (now < new Date(contest.startTime)) return res.status(400).json({ status: 400, message: "Contest has not started yet." });
+    if (now > new Date(contest.endTime)) return res.status(400).json({ status: 400, message: "Contest has ended." });
 
-    // Determine target problem
-    const probList = contest ? contest.problems : defaultWeeklyContestData.problems;
-    const targetProblem =
-      probList.find((p) => String(p._id) === String(problemId)) || probList[0];
-
-    const testcases = targetProblem.testcases || [];
-    const totalTests = testcases.length || 1;
-    // Real calculation: evaluate against testcases
-    const passedTests = totalTests; // Simulated full pass on submit
-    const pointsEarned = targetProblem.points || 100;
-
-    const submission = {
-      userId: userId || "guest_user",
-      userName: userName || "Coder",
-      problemId: targetProblem._id || problemId,
-      code: code || "",
-      language: language || "javascript",
-      status: "Accepted",
-      passedTests,
-      totalTests,
-      pointsEarned,
-      submittedAt: new Date(),
-    };
-
-    if (contest) {
-      contest.submissions.push(submission);
-      // Update leaderboard
-      let entry = contest.leaderboard.find((l) => l.userId === userId);
-      if (entry) {
-        entry.score += pointsEarned;
-        entry.problemsSolved += 1;
-      } else {
-        contest.leaderboard.push({
-          userId: userId || "user_" + Date.now(),
-          userName: userName || "Coder",
-          avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${userName || "Coder"}`,
-          score: pointsEarned,
-          problemsSolved: 1,
-          finishTimeMinutes: Math.floor(Math.random() * 40) + 15,
-          rank: contest.leaderboard.length + 1,
-        });
-      }
-      contest.leaderboard.sort((a, b) => b.score - a.score);
-      contest.leaderboard.forEach((item, idx) => (item.rank = idx + 1));
+    const userId = String(req.user.Id);
+    let part = contest.participants.find((p) => p.userId === userId);
+    if (!part) {
+      const user = await User.findById(userId);
+      contest.participants.push({ userId, userName: user?.Name || "Coder", avatar: user?.Picture || "", enteredAt: now });
       await contest.save();
+      part = contest.participants.find((p) => p.userId === userId);
     }
 
+    const me = computeLeaderboard(contest).find((r) => r.userId === userId);
     return res.status(200).json({
       status: 200,
-      message: "Solution Accepted! All test cases passed.",
       data: {
-        status: "Accepted",
-        passed: passedTests,
-        failed: 0,
-        total: totalTests,
-        pointsEarned,
-        runtime: "48ms",
-        memory: "16.4 MB",
+        enteredAt: part.enteredAt,
+        durationMinutes: contest.durationMinutes,
+        score: me?.score || 0,
+        solvedProblemIds: me?.solvedProblemIds || [],
       },
     });
   } catch (err) {
+    return res.status(500).json({ status: 500, message: err.message });
+  }
+};
+
+export const getLeaderboard = async (req, res) => {
+  try {
+    if (!isId(req.params.contestId)) return res.status(404).json({ status: 404, data: [] });
+    const contest = await Contest.findById(req.params.contestId);
+    if (!contest) return res.status(404).json({ status: 404, data: [] });
+    return res.status(200).json({ status: 200, data: computeLeaderboard(contest) });
+  } catch (err) {
+    return res.status(500).json({ status: 500, data: [], message: err.message });
+  }
+};
+
+/** Real judging: runs the code against the saved test cases of the problem. */
+export const submitContestProblem = async (req, res) => {
+  try {
+    const { contestId } = req.params;
+    const { problemId, code, language } = req.body;
+    const userId = String(req.user.Id);
+
+    if (!isId(contestId)) return res.status(404).json({ status: 404, message: "Contest not found." });
+    if (!code || !problemId) return res.status(400).json({ status: 400, message: "Code and problem are required." });
+
+    const contest = await Contest.findById(contestId);
+    if (!contest) return res.status(404).json({ status: 404, message: "Contest not found." });
+
+    const problem = contest.problems.find((p) => String(p._id) === String(problemId));
+    if (!problem) return res.status(404).json({ status: 404, message: "Problem not found in this contest." });
+
+    const part = contest.participants.find((p) => p.userId === userId);
+    if (!part) return res.status(403).json({ status: 403, message: "Press Start to enter the contest first." });
+
+    const now = new Date();
+    const personalEnd = new Date(part.enteredAt).getTime() + (contest.durationMinutes || 90) * 60000;
+    if (now > new Date(contest.endTime) || now.getTime() > personalEnd) {
+      return res.status(400).json({ status: 400, message: "Your contest time is over." });
+    }
+
+    // Already solved -> don't judge again, don't add points/time.
+    const already = contest.submissions.some(
+      (s) => s.userId === userId && String(s.problemId) === String(problemId) && s.isAccepted
+    );
+    if (already) {
+      return res.status(200).json({ status: 200, message: "Already solved.", data: { status: "Accepted", alreadySolved: true, passed: 0, failed: 0, total: 0, pointsEarned: 0 } });
+    }
+
+    const tests = problem.testcases || [];
+    let passed = 0;
+    let verdict = "Accepted";
+    let errorText = "";
+    for (const t of tests) {
+      const { stdout, stderr } = await executeOne(language, code, String(t.input ?? ""));
+      if (stderr) {
+        verdict = /time limit/i.test(stderr) ? "Time Limit Exceeded" : "Runtime Error";
+        errorText = errorText || stderr;
+      } else if (outputsMatch(stdout, t.output)) {
+        passed++;
+      } else if (verdict === "Accepted") {
+        verdict = "Wrong Answer";
+      }
+    }
+    const total = tests.length;
+    const accepted = total > 0 && passed === total;
+    if (!accepted && verdict === "Accepted") verdict = "Wrong Answer";
+
+    const minutesFromEntry = Math.max(0, Math.floor((now - new Date(part.enteredAt)) / 60000));
+    const wrongBefore = contest.submissions.filter(
+      (s) => s.userId === userId && String(s.problemId) === String(problemId) && !s.isAccepted
+    ).length;
+
+    contest.submissions.push({
+      userId,
+      userName: part.userName,
+      problemId: String(problemId),
+      code,
+      language: language || "javascript",
+      status: accepted ? "Accepted" : verdict,
+      isAccepted: accepted,
+      minutesFromEntry,
+      passedTests: passed,
+      totalTests: total,
+      pointsEarned: accepted ? problem.points : 0,
+      submittedAt: now,
+    });
+    await contest.save();
+
+    const me = computeLeaderboard(contest).find((r) => r.userId === userId);
     return res.status(200).json({
       status: 200,
-      message: "Solution Accepted!",
-      data: { status: "Accepted", passed: 3, failed: 0, total: 3, pointsEarned: 100 },
+      message: accepted ? "Accepted! All test cases passed." : verdict,
+      data: {
+        status: accepted ? "Accepted" : verdict,
+        passed,
+        failed: total - passed,
+        total,
+        pointsEarned: accepted ? problem.points : 0,
+        minutes: minutesFromEntry,
+        penaltyMinutes: accepted ? wrongBefore * WRONG_PENALTY_MINUTES : 0,
+        wrongSoFar: wrongBefore + (accepted ? 0 : 1),
+        score: me?.score || 0,
+        solvedProblemIds: me?.solvedProblemIds || [],
+        error: errorText || undefined,
+      },
     });
+  } catch (err) {
+    return res.status(500).json({ status: 500, message: err.message || "Judging failed." });
   }
 };

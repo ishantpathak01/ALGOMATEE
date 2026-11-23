@@ -111,7 +111,7 @@ export default function MentorContests() {
         source: "LeetCode",
         externalUrl: "https://leetcode.com",
         difficulty: "Medium",
-        points: 100,
+        points: 25,
         statement: "Enter problem description and instructions here...",
         inputFormat: "",
         outputFormat: "",
@@ -512,7 +512,7 @@ export default function MentorContests() {
 
                           <div className="space-y-1">
                             <label className="text-[11px] text-gray-400">
-                              Points
+                              Points (your choice, e.g. Easy 20 / Medium 25 / Hard 50)
                             </label>
                             <input
                               type="number"

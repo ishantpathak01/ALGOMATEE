@@ -6,6 +6,8 @@ import {
   getContestById,
   createContest,
   submitContestProblem,
+  enterContest,
+  getLeaderboard,
 } from "../controllers/contest.js";
 
 const router = express.Router();
@@ -42,6 +44,8 @@ const verifyToken = (req, res, next) => {
 
 router.get("/all", getAllContests);
 router.get("/weekly", verifyToken, getWeeklyContest);
+router.get("/:contestId/leaderboard", verifyToken, getLeaderboard);
+router.post("/:contestId/enter", verifyToken, enterContest);
 router.get("/:id", verifyToken, getContestById);
 router.post("/create", verifyToken, createContest);
 router.post("/:contestId/submit", verifyToken, submitContestProblem);

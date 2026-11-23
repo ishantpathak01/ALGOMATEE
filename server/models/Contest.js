@@ -13,7 +13,7 @@ const problemSchema = new mongoose.Schema({
     enum: ["Easy", "Medium", "Hard"],
     default: "Medium",
   },
-  points: { type: Number, default: 100 },
+  points: { type: Number, default: 25 },
   statement: { type: String, required: true },
   inputFormat: { type: String, default: "" },
   outputFormat: { type: String, default: "" },
@@ -41,6 +41,8 @@ const submissionSchema = new mongoose.Schema({
     enum: ["Accepted", "Wrong Answer", "Time Limit Exceeded", "Runtime Error"],
     default: "Accepted",
   },
+  isAccepted: { type: Boolean, default: false },
+  minutesFromEntry: { type: Number, default: 0 },
   passedTests: { type: Number, default: 0 },
   totalTests: { type: Number, default: 0 },
   pointsEarned: { type: Number, default: 0 },
@@ -76,6 +78,15 @@ const contestSchema = new mongoose.Schema(
     },
     problems: [problemSchema],
     registeredUsers: { type: [String], default: [] },
+    // Real entry time of every participant (set once, on the server).
+    participants: [
+      {
+        userId: { type: String, required: true },
+        userName: { type: String, default: "Coder" },
+        avatar: { type: String, default: "" },
+        enteredAt: { type: Date, default: Date.now },
+      },
+    ],
     submissions: [submissionSchema],
     leaderboard: [
       {

@@ -4,7 +4,7 @@ import { Resizable } from "re-resizable";
 import Editor from "./../../components/practice/coding/editor";
 import ProblemStatement from "./../../components/practice/coding/problemStatement";
 import CustomTestcases from "./../../components/practice/coding/testcases";
-import { getContestById, submitContestProblem } from "../../APIs/contest";
+import { getContestById, submitContestProblem, enterContest, getLeaderboard } from "../../APIs/contest";
 import { executeCode } from "../../utils/codeRunner";
 import { useAppContext } from "../../context/userContext";
 import toast from "react-hot-toast";
@@ -38,6 +38,9 @@ export default function ContestArena() {
   const [solvedProblemIds, setSolvedProblemIds] = useState([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [totalScore, setTotalScore] = useState(0);
+  const [enteredAt, setEnteredAt] = useState(null);
+  const [now, setNow] = useState(Date.now());
+  const [liveBoard, setLiveBoard] = useState([]);
   
   // Contest Rules & Warning States
   const [hasStarted, setHasStarted] = useState(false);
@@ -66,6 +69,26 @@ export default function ContestArena() {
     };
     fetchContest();
   }, [contestId]);
+
+  // 1-second clock for the contest timer
+  useEffect(() => {
+    if (!enteredAt) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [enteredAt]);
+
+  // Real leaderboard from the server, refreshed every 5s while it is open
+  useEffect(() => {
+    if (!showLeaderboard) return;
+    let alive = true;
+    const load = async () => {
+      const r = await getLeaderboard(contestId);
+      if (alive && Array.isArray(r?.data)) setLiveBoard(r.data);
+    };
+    load();
+    const t = setInterval(load, 5000);
+    return () => { alive = false; clearInterval(t); };
+  }, [showLeaderboard, contestId]);
 
   // Handle Fullscreen & 3 Warnings Logic
   useEffect(() => {
@@ -109,10 +132,20 @@ export default function ContestArena() {
   const handleStartContest = async () => {
     try {
       await document.documentElement.requestFullscreen();
-      setHasStarted(true);
     } catch (err) {
       toast.error("Could not enable full screen. Please allow full screen to start.");
+      return;
     }
+    const r = await enterContest(contestId);
+    if (r?.status !== 200 || !r.data) {
+      toast.error(r?.message || "Could not enter the contest.");
+      if (document.fullscreenElement) document.exitFullscreen();
+      return;
+    }
+    setEnteredAt(new Date(r.data.enteredAt).getTime());
+    setSolvedProblemIds(r.data.solvedProblemIds || []);
+    setTotalScore(r.data.score || 0);
+    setHasStarted(true);
   };
 
   const handleReturnToFullscreen = async () => {
@@ -156,7 +189,7 @@ export default function ContestArena() {
       const res = await executeCode({
         code,
         language,
-        testcases: activeProblem.testcases || [],
+        testcases: (activeProblem.testcases || []).filter((t) => !t.isHidden),
         problemId: activeProblem._id || "contest_prob",
         userId: user?._id,
         isSubmit: false,
@@ -175,44 +208,38 @@ export default function ContestArena() {
 
   const handleSubmit = async () => {
     setIsRunning(true);
-    toast.loading("Testing solution against contest test cases...", {
-      id: "contest-exec",
-    });
+    toast.loading("Judging on the server...", { id: "contest-exec" });
     try {
-      const execRes = await executeCode({
+      const r = await submitContestProblem(contestId, {
+        problemId: activeProblem._id,
         code,
         language,
-        testcases: activeProblem.testcases || [],
-        problemId: activeProblem._id,
-        userId: user?._id,
-        isSubmit: true,
       });
-
-      setOutput(execRes);
+      if (r?.status !== 200 || !r.data) {
+        toast.error(r?.message || "Submission failed.", { id: "contest-exec" });
+        setOutput({ success: false, type: "Submit", passed: 0, failed: 1, total: 1, results: [], output: r?.message, error: true, message: r?.message });
+        setActiveTerminalTab("result");
+        return;
+      }
+      const d = r.data;
+      setOutput({
+        success: true, type: "Submit", passed: d.passed, failed: d.failed, total: d.total,
+        results: [], error: d.status !== "Accepted",
+        output: d.error || r.message, message: r.message,
+      });
       setActiveTerminalTab("result");
+      if (Array.isArray(d.solvedProblemIds)) setSolvedProblemIds(d.solvedProblemIds);
+      if (typeof d.score === "number") setTotalScore(d.score);
 
-      if (execRes.passed === execRes.total) {
-        await submitContestProblem(contestId, {
-          problemId: activeProblem._id,
-          code,
-          language,
-          userId: user?._id || "guest_" + Date.now(),
-          userName: user?.Name || "Contestant",
-        });
-
-        if (!solvedProblemIds.includes(activeProblem._id)) {
-          setSolvedProblemIds([...solvedProblemIds, activeProblem._id]);
-          setTotalScore((prev) => prev + (activeProblem.points || 100));
-        }
-
+      if (d.alreadySolved) {
+        toast("You already solved this problem.", { id: "contest-exec" });
+      } else if (d.status === "Accepted") {
         toast.success(
-          `🎉 Accepted! +${activeProblem.points || 100} Contest Points!`,
+          `Accepted! +${d.pointsEarned} pts · ${d.minutes} min` + (d.penaltyMinutes ? ` (+${d.penaltyMinutes} min penalty)` : ""),
           { id: "contest-exec" }
         );
       } else {
-        toast.error("Some test cases failed. Check terminal & testcases.", {
-          id: "contest-exec",
-        });
+        toast.error(`${d.status}: ${d.passed}/${d.total} tests passed. +5 min penalty if you solve it later.`, { id: "contest-exec" });
       }
     } catch (err) {
       toast.error("Submission error: " + err.message, { id: "contest-exec" });
@@ -407,6 +434,16 @@ export default function ContestArena() {
 
         {/* Score & Leaderboard Trigger */}
         <div className="flex items-center space-x-3">
+          {enteredAt && (() => {
+            const left = Math.max(0, (contest?.durationMinutes || 90) * 60 - Math.floor((now - enteredAt) / 1000));
+            const mm = String(Math.floor(left / 60)).padStart(2, "0");
+            const ss = String(left % 60).padStart(2, "0");
+            return (
+              <div className="flex items-center px-3 py-1 bg-blue-950/40 border border-blue-800/60 rounded-xl text-blue-300 text-xs font-mono font-semibold">
+                ⏱ {mm}:{ss} left
+              </div>
+            );
+          })()}
           <div className="hidden md:flex items-center space-x-1.5 px-3 py-1 bg-amber-950/40 border border-amber-800/60 rounded-xl text-amber-300 text-xs font-semibold">
             <Award className="w-4 h-4 text-amber-400" />
             <span>Score: {totalScore} pts</span>
@@ -595,7 +632,7 @@ export default function ContestArena() {
             </div>
 
             <div className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
-              {(contest?.leaderboard || []).map((entry, idx) => (
+              {liveBoard.map((entry, idx) => (
                 <div
                   key={idx}
                   className={`flex items-center justify-between p-3 rounded-xl border text-sm ${
@@ -633,7 +670,7 @@ export default function ContestArena() {
                         {entry.userName}
                       </p>
                       <p className="text-[11px] text-gray-400">
-                        {entry.problemsSolved || 0} Solved · {entry.finishTimeMinutes || 30}m
+                        {entry.problemsSolved || 0} Solved · {entry.finishTimeMinutes || 0} min{entry.wrongSubmissions ? ` (incl. ${entry.wrongSubmissions * 5} min penalty)` : ""}
                       </p>
                     </div>
                   </div>
@@ -647,6 +684,9 @@ export default function ContestArena() {
               ))}
             </div>
 
+            {liveBoard.length === 0 && (
+              <p className="text-center text-gray-500 text-sm py-6">No participants yet.</p>
+            )}
             <div className="pt-2 text-center">
               <button
                 onClick={() => setShowLeaderboard(false)}
