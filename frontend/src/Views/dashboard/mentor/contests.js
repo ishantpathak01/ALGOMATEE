@@ -524,9 +524,9 @@ export default function MentorContests() {
                                 Test #{tcIdx + 1}
                               </span>
                               <div className="flex-1 w-full">
-                                <input
-                                  type="text"
-                                  placeholder="Input (e.g. [2,7,11,15] 9)"
+                                <textarea
+                                  rows={2}
+                                  placeholder={"Input (press Enter for a new line)\ne.g.\n5\n1 2 3 4 5"}
                                   value={tc.input || ""}
                                   onChange={(e) =>
                                     handleUpdateProblemTestCase(
@@ -536,13 +536,13 @@ export default function MentorContests() {
                                       e.target.value
                                     )
                                   }
-                                  className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-xs text-white font-mono"
+                                  className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-xs text-white font-mono resize-y whitespace-pre"
                                 />
                               </div>
                               <div className="flex-1 w-full">
-                                <input
-                                  type="text"
-                                  placeholder="Expected Output (e.g. [0,1])"
+                                <textarea
+                                  rows={2}
+                                  placeholder="Expected Output (Enter = new line)"
                                   value={tc.output || ""}
                                   onChange={(e) =>
                                     handleUpdateProblemTestCase(
@@ -552,7 +552,7 @@ export default function MentorContests() {
                                       e.target.value
                                     )
                                   }
-                                  className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-xs text-emerald-300 font-mono"
+                                  className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-xs text-emerald-300 font-mono resize-y whitespace-pre"
                                 />
                               </div>
                               <button
