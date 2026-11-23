@@ -573,3 +573,65 @@ export const getPublishedWinners = async (req, res) => {
     return res.status(500).json({ status: 500, data: [], message: err.message });
   }
 };
+
+/**
+ * Participant: my own result for a finished contest (+ the published top 3).
+ * Never exposes anyone else's score, time or code.
+ */
+export const getMyResult = async (req, res) => {
+  try {
+    const { contestId } = req.params;
+    if (!isId(contestId)) return res.status(404).json({ status: 404, data: null, message: "Contest not found." });
+    const contest = await Contest.findById(contestId);
+    if (!contest) return res.status(404).json({ status: 404, data: null, message: "Contest not found." });
+
+    const ended = Date.now() > new Date(contest.endTime).getTime();
+    if (!ended) {
+      return res.status(403).json({ status: 403, data: null, message: "Results are available after the contest ends.", endTime: contest.endTime });
+    }
+
+    const userId = String(req.user.Id);
+    const report = computeAdminReport(contest);
+    const me = report.find((r) => r.userId === userId);
+    const published = !!contest.winnersPublished && (contest.winners || []).length > 0;
+
+    const base = {
+      contest: { id: String(contest._id), title: contest.title, endTime: contest.endTime, totalProblems: (contest.problems || []).length },
+      participated: !!me,
+      totalParticipants: report.length,
+      winnersPublished: published,
+      winners: published ? [...contest.winners].sort((a, b) => a.rank - b.rank) : [],
+    };
+    if (!me) return res.status(200).json({ status: 200, data: { ...base, me: null } });
+
+    return res.status(200).json({
+      status: 200,
+      data: {
+        ...base,
+        me: {
+          rank: me.rank,
+          score: me.score,
+          solvedCount: me.solvedCount,
+          totalProblems: me.totalProblems,
+          totalTimeMinutes: me.totalTimeMinutes,
+          wrongSubmissions: me.wrongSubmissions,
+          totalSubmissions: me.totalSubmissions,
+          enteredAt: me.enteredAt,
+          perProblem: me.perProblem.map((p) => ({
+            problemId: p.problemId,
+            title: p.title,
+            points: p.points,
+            solved: p.solved,
+            minutes: p.minutes,
+            wrongBeforeSolve: p.wrongBeforeSolve,
+            penaltyMinutes: p.penaltyMinutes,
+            attempts: p.attempts,
+            lastVerdict: p.lastVerdict,
+          })),
+        },
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ status: 500, data: null, message: err.message });
+  }
+};

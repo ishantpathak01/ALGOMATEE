@@ -14,6 +14,7 @@ import {
   deleteContest,
   setContestWinners,
   getPublishedWinners,
+  getMyResult,
 } from "../controllers/contest.js";
 
 const router = express.Router();
@@ -73,6 +74,7 @@ router.get("/:contestId/leaderboard", adminAuth, getLeaderboard);
 router.get("/:contestId/admin/results", adminAuth, getAdminResults);
 router.get("/:contestId/admin/submission/:subId", adminAuth, getAdminSubmissionCode);
 router.post("/:contestId/enter", verifyToken, enterContest);
+router.get("/:contestId/my-result", verifyToken, getMyResult);
 router.get("/:id", verifyToken, getContestById);
 router.delete("/:contestId", adminAuth, deleteContest);
 router.post("/:contestId/winners", adminAuth, setContestWinners);

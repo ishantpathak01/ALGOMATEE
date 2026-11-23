@@ -187,14 +187,14 @@ export default function ContestsHub() {
                     </div>
 
                     <Link
-                      to={`/contests/${contest._id || contest.id}`}
+                      to={`/contests/${contest._id || contest.id}${isActive ? "" : "/results"}`}
                       className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                         isActive
                           ? "bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/30"
                           : "bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white"
                       }`}
                     >
-                      <span>{isActive ? "Enter Contest" : "View Results"}</span>
+                      <span>{isActive ? "Enter Contest" : "My Result"}</span>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </Link>
                   </div>

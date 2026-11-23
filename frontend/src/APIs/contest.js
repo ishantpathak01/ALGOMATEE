@@ -124,3 +124,12 @@ export const getPublishedWinners = async (limit = 1) => {
     return fail(err, { data: [] });
   }
 };
+
+export const getMyResult = async (contestId) => {
+  try {
+    const res = await axios.get(`${SERVER}/contest/${contestId}/my-result`, opts);
+    return res.data;
+  } catch (err) {
+    return fail(err, { data: null, endTime: err?.response?.data?.endTime });
+  }
+};
