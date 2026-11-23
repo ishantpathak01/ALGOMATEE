@@ -34,7 +34,8 @@ export default function WeeklyContestBanner() {
     if (!contest?.endTime) return;
 
     const timer = setInterval(() => {
-      const diff = new Date(contest.endTime).getTime() - new Date().getTime();
+      const target = contest.status === "upcoming" ? contest.startTime : contest.endTime;
+      const diff = new Date(target).getTime() - new Date().getTime();
       if (diff <= 0) {
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
         clearInterval(timer);
@@ -118,7 +119,7 @@ export default function WeeklyContestBanner() {
                   {totalPoints} Points
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-purple-950/40 border border-purple-800/60 text-purple-300">
-                  {contest.durationMinutes} min to solve
+                  {contest.durationMinutes} min per participant
                 </span>
               </div>
 
@@ -154,7 +155,7 @@ export default function WeeklyContestBanner() {
             <div className="lg:col-span-5 bg-gradient-to-b from-gray-900/90 to-black/90 p-6 rounded-2xl border border-gray-800 space-y-5 text-center">
               <div>
                 <p className="text-xs uppercase tracking-wider text-gray-400 font-medium mb-3 flex items-center justify-center gap-1.5">
-                  <Clock className="w-4 h-4 text-blue-400 inline" /> Contest Ends In:
+                  <Clock className="w-4 h-4 text-blue-400 inline" /> {contest.status === "upcoming" ? "Contest Starts In:" : "Contest Closes In:"}
                 </p>
 
                 {/* Countdown display */}

@@ -25,7 +25,9 @@ export default function MentorContests() {
   // New Contest Form State
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [durationMinutes, setDurationMinutes] = useState(90);
+  const [startAt, setStartAt] = useState("");
+  const [endAt, setEndAt] = useState("");
+  const [durationMinutes, setDurationMinutes] = useState(60);
   const [rewardCoins, setRewardCoins] = useState(300);
   const [difficulty, setDifficulty] = useState("Intermediate");
 
@@ -111,13 +113,30 @@ export default function MentorContests() {
       return;
     }
 
+    if (!startAt || !endAt) {
+      toast.error("Please set the contest start and end date/time.");
+      return;
+    }
+    const startMs = new Date(startAt).getTime();
+    const endMs = new Date(endAt).getTime();
+    if (!(endMs > startMs)) {
+      toast.error("End time must be after the start time.");
+      return;
+    }
+    if (!(Number(durationMinutes) > 0)) {
+      toast.error("Enter the time each participant gets (minutes).");
+      return;
+    }
+
     const payload = {
       title,
+      startTime: new Date(startAt).toISOString(),
+      endTime: new Date(endAt).toISOString(),
       description,
       mentorName: user?.Name || "Senior Mentor",
       mentorBio: user?.Bio || "AlgoMate Competitive Programming Mentor",
       mentorAvatar: user?.Picture || "",
-      durationMinutes: Number(durationMinutes) || 90,
+      durationMinutes: Number(durationMinutes),
       rewardCoins: Number(rewardCoins) || 300,
       difficulty,
       problems,
@@ -234,7 +253,9 @@ export default function MentorContests() {
                 <div className="pt-3 border-t border-gray-800 flex items-center justify-between text-xs">
                   <div className="text-gray-400 flex items-center space-x-2">
                     <Clock className="w-3.5 h-3.5" />
-                    <span>{c.durationMinutes || 90} mins</span>
+                    <span>{c.durationMinutes} min each</span>
+                    <span>·</span>
+                    <span>{c.startTime ? new Date(c.startTime).toLocaleString() : ""} → {c.endTime ? new Date(c.endTime).toLocaleString() : ""}</span>
                     <span>·</span>
                     <span>{c.leaderboard?.length || 0} contestants</span>
                   </div>
@@ -292,10 +313,37 @@ export default function MentorContests() {
                   />
                 </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-gray-300">
+                      Contest opens (anyone can enter from)
+                    </label>
+                    <input
+                      type="datetime-local"
+                      required
+                      value={startAt}
+                      onChange={(e) => setStartAt(e.target.value)}
+                      className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-gray-300">
+                      Contest closes (last time to enter)
+                    </label>
+                    <input
+                      type="datetime-local"
+                      required
+                      value={endAt}
+                      onChange={(e) => setEndAt(e.target.value)}
+                      className="w-full bg-gray-950 border border-gray-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-gray-300">
-                      Duration (mins)
+                      Time per participant (mins)
                     </label>
                     <input
                       type="number"

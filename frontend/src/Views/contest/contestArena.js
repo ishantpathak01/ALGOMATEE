@@ -39,6 +39,7 @@ export default function ContestArena() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [totalScore, setTotalScore] = useState(0);
   const [enteredAt, setEnteredAt] = useState(null);
+  const [endsAtMs, setEndsAtMs] = useState(null);
   const [now, setNow] = useState(Date.now());
   const [liveBoard, setLiveBoard] = useState([]);
   
@@ -143,6 +144,7 @@ export default function ContestArena() {
       return;
     }
     setEnteredAt(new Date(r.data.enteredAt).getTime());
+    setEndsAtMs(new Date(r.data.personalEndsAt).getTime());
     setSolvedProblemIds(r.data.solvedProblemIds || []);
     setTotalScore(r.data.score || 0);
     setHasStarted(true);
@@ -182,7 +184,13 @@ export default function ContestArena() {
     testcases: [],
   };
 
+  const timeUp = !!endsAtMs && now >= endsAtMs;
+
   const handleRun = async () => {
+    if (timeUp) {
+      toast.error("Your contest time is over.");
+      return;
+    }
     setIsRunning(true);
     toast.loading("Running solution in terminal...", { id: "contest-exec" });
     try {
@@ -207,6 +215,10 @@ export default function ContestArena() {
   };
 
   const handleSubmit = async () => {
+    if (timeUp) {
+      toast.error("Your contest time is over. Submissions are closed.");
+      return;
+    }
     setIsRunning(true);
     toast.loading("Judging on the server...", { id: "contest-exec" });
     try {
@@ -420,12 +432,12 @@ export default function ContestArena() {
         {/* Score & Leaderboard Trigger */}
         <div className="flex items-center space-x-3">
           {enteredAt && (() => {
-            const left = Math.max(0, (contest?.durationMinutes || 90) * 60 - Math.floor((now - enteredAt) / 1000));
+            const left = Math.max(0, Math.floor(((endsAtMs || 0) - now) / 1000));
             const mm = String(Math.floor(left / 60)).padStart(2, "0");
             const ss = String(left % 60).padStart(2, "0");
             return (
               <div className="flex items-center px-3 py-1 bg-blue-950/40 border border-blue-800/60 rounded-xl text-blue-300 text-xs font-mono font-semibold">
-                ⏱ {mm}:{ss} left
+                {left === 0 ? "Time is over" : `⏱ ${mm}:${ss} left`}
               </div>
             );
           })()}

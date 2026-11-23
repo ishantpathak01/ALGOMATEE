@@ -9,6 +9,8 @@ const isId = (id) => /^[a-f0-9]{24}$/i.test(String(id || ""));
 /** Never send other people's code or hidden expected outputs to the browser. */
 const sanitize = (contestDoc) => {
   const c = contestDoc.toObject ? contestDoc.toObject() : { ...contestDoc };
+  const nowMs = Date.now();
+  c.status = nowMs < new Date(c.startTime).getTime() ? "upcoming" : nowMs > new Date(c.endTime).getTime() ? "completed" : "active";
   delete c.submissions;
   delete c.participants;
   c.problems = (c.problems || []).map((p) => ({
@@ -132,18 +134,27 @@ export const createContest = async (req, res) => {
       }
     }
 
+    const sMs = new Date(startTime).getTime();
+    const eMs = new Date(endTime).getTime();
+    if (!startTime || !endTime || isNaN(sMs) || isNaN(eMs) || eMs <= sMs) {
+      return res.status(400).json({ status: 400, message: "Set a valid start and end time (end must be after start)." });
+    }
+    if (!(Number(durationMinutes) > 0)) {
+      return res.status(400).json({ status: 400, message: "Set the time per participant (minutes)." });
+    }
+
     const newContest = await Contest.create({
       title,
       description: description || "",
       mentorName: mentorName || "AlgoMate Mentor",
       mentorBio: mentorBio || "",
       mentorAvatar: mentorAvatar || "",
-      durationMinutes: durationMinutes || 90,
+      durationMinutes: Number(durationMinutes),
       rewardCoins: rewardCoins || 0,
       difficulty: difficulty || "Intermediate",
       problems: problems.map((p) => ({ ...p, source: "AlgoMate", externalUrl: "", points: Number(p.points) })),
-      startTime: startTime || new Date(),
-      endTime: endTime || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      startTime: new Date(startTime),
+      endTime: new Date(endTime),
       isWeekly: isWeekly !== undefined ? isWeekly : true,
       status: "active",
     });
@@ -181,6 +192,8 @@ export const enterContest = async (req, res) => {
       data: {
         enteredAt: part.enteredAt,
         durationMinutes: contest.durationMinutes,
+        // your personal deadline: entry + your minutes, but never later than the contest close
+        personalEndsAt: new Date(Math.min(new Date(part.enteredAt).getTime() + contest.durationMinutes * 60000, new Date(contest.endTime).getTime())),
         score: me?.score || 0,
         solvedProblemIds: me?.solvedProblemIds || [],
       },
