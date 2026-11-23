@@ -14,6 +14,10 @@ const JUDGE0_LANG = { python: 71, cpp: 54, java: 62, c: 50, javascript: 63 };
 
 /** Java "class Solution" style code -> add a Main that reads one token and prints the result. */
 export function wrapCode(lang, code) {
+  if (lang === "java") {
+    // Old starter template nested Main inside Solution (invalid Java) -> unwrap it.
+    code = code.replace(/^\s*class\s+Solution\s*\{\s*(public\s+class\s+Main\b[\s\S]*\})\s*\}\s*$/, "$1");
+  }
   if (lang === "java" && !code.includes("public static void main")) {
     const m = code.match(/public\s+(?:\w+\s+)*(\w+)\s+([a-zA-Z0-9_]+)\s*\(/);
     const method = m ? m[2] : "solve";
