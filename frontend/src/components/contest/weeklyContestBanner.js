@@ -6,8 +6,6 @@ import {
   Flame,
   Clock,
   Code2,
-  ExternalLink,
-  Award,
   ChevronRight,
   Sparkles,
 } from "lucide-react";
@@ -54,14 +52,8 @@ export default function WeeklyContestBanner() {
 
   if (!contest) return null;
 
-  const leetcodeCount =
-    contest.problems?.filter((p) => p.source === "LeetCode").length || 1;
-  const gfgCount =
-    contest.problems?.filter((p) => p.source === "GeeksForGeeks").length || 1;
-  const mentorCount =
-    contest.problems?.filter(
-      (p) => p.source === "AlgoMate" || p.source === "Custom"
-    ).length || 1;
+  const problemCount = contest.problems?.length || 0;
+  const totalPoints = (contest.problems || []).reduce((t, p) => t + (p.points || 0), 0);
 
   return (
     <div className="max-w-6xl mx-auto px-6 my-16 z-20 relative">
@@ -82,9 +74,6 @@ export default function WeeklyContestBanner() {
                 <Flame className="w-3.5 h-3.5 text-emerald-400" />
                 Live Weekly Coding Contest
               </span>
-              <span className="text-xs text-gray-400 font-mono">
-                #{contest.contestNumber || 42}
-              </span>
             </div>
 
             {/* Mentor Attribution */}
@@ -92,7 +81,7 @@ export default function WeeklyContestBanner() {
               <img
                 src={
                   contest.mentorAvatar ||
-                  "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&auto=format&fit=crop&q=80"
+                  `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(contest.mentorName || "Mentor")}`
                 }
                 alt={contest.mentorName}
                 className="w-9 h-9 rounded-full object-cover ring-2 ring-blue-500/50"
@@ -121,19 +110,15 @@ export default function WeeklyContestBanner() {
                 </p>
               </div>
 
-              {/* Problem Pills: LeetCode + GFG + Mentor Problems */}
               <div className="flex flex-wrap gap-2.5 pt-1">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-amber-950/40 border border-amber-800/60 text-amber-300">
-                  <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                  LeetCode Problems ({leetcodeCount})
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-blue-950/40 border border-blue-800/60 text-blue-300">
+                  {problemCount} Problems
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-emerald-950/40 border border-emerald-800/60 text-emerald-300">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                  GeeksForGeeks Problems ({gfgCount})
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-amber-950/40 border border-amber-800/60 text-amber-300">
+                  {totalPoints} Points
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-purple-950/40 border border-purple-800/60 text-purple-300">
-                  <span className="w-2 h-2 rounded-full bg-purple-400"></span>
-                  Mentor Exclusive DSA ({mentorCount})
+                  {contest.durationMinutes} min to solve
                 </span>
               </div>
 
@@ -142,26 +127,18 @@ export default function WeeklyContestBanner() {
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                   Contest Problem Set:
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                  {contest.problems?.slice(0, 3).map((prob, idx) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {contest.problems?.map((prob, idx) => (
                     <div
                       key={idx}
                       className="p-2.5 rounded-xl bg-gray-900/60 border border-gray-800/80 hover:border-gray-700 transition-all flex flex-col justify-between"
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span
-                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                            prob.source === "LeetCode"
-                              ? "bg-amber-900/40 text-amber-400"
-                              : prob.source === "GeeksForGeeks"
-                              ? "bg-emerald-900/40 text-emerald-400"
-                              : "bg-purple-900/40 text-purple-400"
-                          }`}
-                        >
-                          {prob.source}
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-800 text-gray-300">
+                          {prob.difficulty}
                         </span>
                         <span className="text-[10px] text-gray-400 font-mono">
-                          {prob.points || 100} pts
+                          {prob.points} pts
                         </span>
                       </div>
                       <p className="font-semibold text-gray-200 line-clamp-1">
@@ -209,13 +186,14 @@ export default function WeeklyContestBanner() {
                 </div>
               </div>
 
-              {/* Prize banner */}
-              <div className="flex items-center justify-center space-x-2 text-xs py-2 px-3 bg-amber-950/30 border border-amber-800/40 rounded-xl text-amber-300">
-                <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>
-                  Win <strong>{contest.rewardCoins || 350} AlgoCoins</strong> + Verified Certificate
-                </span>
-              </div>
+              {contest.rewardCoins > 0 && (
+                <div className="flex items-center justify-center space-x-2 text-xs py-2 px-3 bg-amber-950/30 border border-amber-800/40 rounded-xl text-amber-300">
+                  <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>
+                    Win <strong>{contest.rewardCoins} AlgoCoins</strong>
+                  </span>
+                </div>
+              )}
 
               {/* CTAs */}
               <div className="space-y-2 pt-1">
