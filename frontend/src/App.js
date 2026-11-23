@@ -101,6 +101,7 @@ const ResumeAnalyzer = lazy(() => import("./Views/resumeAnalyzer"));
 const ContestsHub = lazy(() => import("./Views/contest/contestsHub"));
 const ContestArena = lazy(() => import("./Views/contest/contestArena"));
 const ContestResult = lazy(() => import("./Views/contest/contestResult"));
+const Store = lazy(() => import("./Views/store/store"));
 const MentorContests = lazy(() =>
   import("./Views/dashboard/mentor/contests")
 );
@@ -222,6 +223,16 @@ function App() {
                     element={
                       <>
                         <JobSearch />
+                        <Footer />
+                      </>
+                    }
+                  />
+
+                  <Route
+                    path="/store"
+                    element={
+                      <>
+                        <Store />
                         <Footer />
                       </>
                     }

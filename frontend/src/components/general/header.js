@@ -6,6 +6,7 @@ import { useAppContext } from "../../context/userContext";
 import { Login } from "@mui/icons-material";
 import "./logo.css";
 import { avatarFor, onAvatarError } from "../../utils/avatar";
+import { ShoppingBag } from "lucide-react";
 function Header() {
   const [showBanner, setShowBanner] = useState(false);
   const { user } = useAppContext();
@@ -102,6 +103,14 @@ function Header() {
               <span>Contests</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
             </h2>
+          </button>
+        </Link>
+
+        {/* Store */}
+        <Link to="/store">
+          <button className="text-white hover:bg-slate-800 px-8 py-2 rounded-md transition-all duration-500 flex flex-col items-center">
+            <ShoppingBag className="w-5 h-5 opacity-80" />
+            <h2 className="text-sm">Store</h2>
           </button>
         </Link>
 
