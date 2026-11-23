@@ -13,7 +13,7 @@ const fmt = (m) => {
 };
 const when = (d) => (d ? new Date(d).toLocaleString() : "—");
 
-export default function AdminContestResults() {
+export default function AdminContestResults({ embedded = false, initialContestId = "" }) {
   const [contests, setContests] = useState([]);
   const [contestId, setContestId] = useState("");
   const [report, setReport] = useState(null);
@@ -26,7 +26,9 @@ export default function AdminContestResults() {
       const r = await getAllContests();
       const list = Array.isArray(r?.data) ? r.data : [];
       setContests(list);
-      if (list[0]) setContestId(String(list[0]._id));
+      const wanted = list.find((c) => String(c._id) === String(initialContestId));
+      if (wanted) setContestId(String(wanted._id));
+      else if (list[0]) setContestId(String(list[0]._id));
     })();
   }, []);
 
@@ -70,8 +72,8 @@ export default function AdminContestResults() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white pt-24 pb-16 px-4">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className={embedded ? "text-white" : "min-h-screen bg-gray-950 text-white pt-24 pb-16 px-4"}>
+      <div className={embedded ? "space-y-6" : "max-w-7xl mx-auto space-y-6"}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-extrabold">Contest Results (Admin)</h1>

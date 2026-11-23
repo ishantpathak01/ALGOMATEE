@@ -11,6 +11,7 @@ import {
   requireAdmin,
   getAdminResults,
   getAdminSubmissionCode,
+  deleteContest,
 } from "../controllers/contest.js";
 
 const router = express.Router();
@@ -41,17 +42,36 @@ const verifyToken = (req, res, next) => {
   }
 };
 
+// Admin-panel login issues its own Bearer token (signed with SECRET_KEY + ":admin").
+// Accept that token OR a normal user session that is flagged as admin.
+const adminAuth = (req, res, next) => {
+  const header = req.headers.authorization || "";
+  if (header.startsWith("Bearer ")) {
+    try {
+      const payload = jwt.verify(header.slice(7), `${process.env.SECRET_KEY}:admin`);
+      if (payload.role === "admin") {
+        req.isPanelAdmin = true;
+        return next();
+      }
+    } catch (e) {
+      /* fall through to the cookie-based check */
+    }
+  }
+  return verifyToken(req, res, (err) => (err ? next(err) : requireAdmin(req, res, next)));
+};
+
 // 2. Apply the middleware to your routes
 // We leave "/all" unprotected so guests can see that contests exist, 
 // but we protect the actual contest data and submissions.
 
 router.get("/all", getAllContests);
 router.get("/weekly", verifyToken, getWeeklyContest);
-router.get("/:contestId/leaderboard", verifyToken, requireAdmin, getLeaderboard);
-router.get("/:contestId/admin/results", verifyToken, requireAdmin, getAdminResults);
-router.get("/:contestId/admin/submission/:subId", verifyToken, requireAdmin, getAdminSubmissionCode);
+router.get("/:contestId/leaderboard", adminAuth, getLeaderboard);
+router.get("/:contestId/admin/results", adminAuth, getAdminResults);
+router.get("/:contestId/admin/submission/:subId", adminAuth, getAdminSubmissionCode);
 router.post("/:contestId/enter", verifyToken, enterContest);
 router.get("/:id", verifyToken, getContestById);
+router.delete("/:contestId", adminAuth, deleteContest);
 router.post("/create", verifyToken, createContest);
 router.post("/:contestId/submit", verifyToken, submitContestProblem);
 

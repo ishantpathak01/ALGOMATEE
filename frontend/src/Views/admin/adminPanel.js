@@ -31,13 +31,15 @@ import {
   deleteAdminQuestion,
   getAdminUsers,
 } from "../../APIs/admin";
-import { getAllContests, createContest } from "../../APIs/contest";
+import { getAllContests, createContest, deleteContest } from "../../APIs/contest";
+import AdminContestResults from "./contestResults";
 
 const TOKEN_KEY = "algomate_admin_token";
 
 const MAIN_MODULES = [
   { id: "mentors", label: "Mentor Applications", icon: Users },
   { id: "contests", label: "Weekly Contests", icon: Trophy },
+  { id: "leaderboard", label: "Leaderboard & Results", icon: Award },
   { id: "questions", label: "DSA Question Bank", icon: Code2 },
   { id: "analytics", label: "Analytics & Users", icon: Activity },
 ];
@@ -77,6 +79,7 @@ export default function AdminPanel() {
   const [form, setForm] = useState({ Email: "", Password: "" });
   const [loggingIn, setLoggingIn] = useState(false);
   const [activeModule, setActiveModule] = useState("mentors");
+  const [leaderboardContestId, setLeaderboardContestId] = useState("");
 
   // Mentor Applications State
   const [mentorTab, setMentorTab] = useState("pending");
@@ -333,6 +336,17 @@ export default function AdminPanel() {
     toast.success("Question deleted.");
   };
 
+  const handleDeleteContest = async (c) => {
+    if (!window.confirm(`Delete "${c.title}" permanently? All submissions and results will be lost.`)) return;
+    const res = await deleteContest(c._id || c.id);
+    if (res?.status === 200) {
+      toast.success("Contest deleted.");
+      loadContests();
+    } else {
+      toast.error(res?.message || "Could not delete contest.");
+    }
+  };
+
   const handleCreateContestSubmit = async (e) => {
     e.preventDefault();
     const payload = {
@@ -478,6 +492,12 @@ export default function AdminPanel() {
           </div>
 
           <div className="flex items-center space-x-3">
+            <button
+              onClick={() => { setLeaderboardContestId(""); setActiveModule("leaderboard"); }}
+              className="px-4 py-2 rounded-xl bg-emerald-600/30 hover:bg-emerald-600 text-xs font-semibold text-emerald-300 hover:text-white transition-all border border-emerald-700"
+            >
+              Contest Leaderboard
+            </button>
             <Link
               to="/contests"
               className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-xs font-semibold text-gray-300 hover:text-white transition-all border border-gray-700"
@@ -765,6 +785,13 @@ export default function AdminPanel() {
               </div>
 
               <button
+                onClick={() => { setLeaderboardContestId(""); setActiveModule("leaderboard"); }}
+                className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all"
+              >
+                <Trophy className="w-4 h-4" />
+                <span>Leaderboard & Results</span>
+              </button>
+              <button
                 onClick={() => setShowCreateContest(true)}
                 className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-600/30 transition-all"
               >
@@ -818,18 +845,43 @@ export default function AdminPanel() {
                     <span className="text-gray-500 font-mono">
                       Duration: {c.durationMinutes || 90} mins
                     </span>
-                    <Link
-                      to={`/contests/${c._id || c.id}`}
-                      className="px-3.5 py-1.5 rounded-lg bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white transition-all flex items-center space-x-1"
-                    >
-                      <span>Open Arena</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </Link>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => { setLeaderboardContestId(String(c._id || c.id)); setActiveModule("leaderboard"); }}
+                        className="px-3.5 py-1.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600 text-emerald-300 hover:text-white transition-all"
+                      >
+                        Leaderboard
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteContest(c)}
+                        className="px-3.5 py-1.5 rounded-lg bg-red-600/30 hover:bg-red-600 text-red-300 hover:text-white transition-all"
+                      >
+                        Delete
+                      </button>
+                      <Link
+                        to={`/contests/${c._id || c.id}`}
+                        className="px-3.5 py-1.5 rounded-lg bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white transition-all flex items-center space-x-1"
+                      >
+                        <span>Open Arena</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </Link>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
+        )}
+
+        {/* ================= LEADERBOARD & RESULTS (inside admin panel) ================= */}
+        {activeModule === "leaderboard" && (
+          <AdminContestResults
+            key={leaderboardContestId || "all"}
+            embedded
+            initialContestId={leaderboardContestId}
+          />
         )}
 
         {/* ================= MODULE 3: DSA QUESTION BANK & REVIEWER ================= */}

@@ -105,6 +105,7 @@ export const isAdminUser = (userDoc) => {
 };
 
 export const requireAdmin = async (req, res, next) => {
+  if (req.isPanelAdmin) return next();
   try {
     const user = await User.findById(req.user.Id);
     if (!isAdminUser(user)) {
@@ -461,5 +462,18 @@ export const submitContestProblem = async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({ status: 500, message: err.message || "Judging failed." });
+  }
+};
+
+
+/** Admin only: permanently remove a contest (problems, participants, submissions go with it). */
+export const deleteContest = async (req, res) => {
+  try {
+    if (!isId(req.params.contestId)) return res.status(404).json({ status: 404, message: "Contest not found." });
+    const deleted = await Contest.findByIdAndDelete(req.params.contestId);
+    if (!deleted) return res.status(404).json({ status: 404, message: "Contest not found." });
+    return res.status(200).json({ status: 200, message: "Contest deleted." });
+  } catch (err) {
+    return res.status(500).json({ status: 500, message: err.message });
   }
 };

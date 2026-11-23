@@ -3,6 +3,13 @@ import axios from "axios";
 const SERVER = (process.env.REACT_APP_API_URL || "http://localhost:8000").replace(/\/+$/, "");
 const opts = { withCredentials: true, timeout: 30000 };
 
+// Admin-panel token (saved by the admin login screen) is sent along so admin-only routes work.
+const adminOpts = (extra = {}) => {
+  let t = "";
+  try { t = sessionStorage.getItem("algomate_admin_token") || ""; } catch (e) {}
+  return { ...opts, ...extra, headers: t ? { Authorization: `Bearer ${t}` } : {} };
+};
+
 const fail = (err, extra = {}) => ({
   status: err?.response?.status || 500,
   message: err?.response?.data?.message || err?.message || "Request failed",
@@ -57,7 +64,7 @@ export const enterContest = async (contestId) => {
 
 export const getLeaderboard = async (contestId) => {
   try {
-    const res = await axios.get(`${SERVER}/contest/${contestId}/leaderboard`, opts);
+    const res = await axios.get(`${SERVER}/contest/${contestId}/leaderboard`, adminOpts());
     return res.data;
   } catch (err) {
     return fail(err, { data: [] });
@@ -75,7 +82,7 @@ export const submitContestProblem = async (contestId, data) => {
 
 export const getAdminResults = async (contestId) => {
   try {
-    const res = await axios.get(`${SERVER}/contest/${contestId}/admin/results`, opts);
+    const res = await axios.get(`${SERVER}/contest/${contestId}/admin/results`, adminOpts());
     return res.data;
   } catch (err) {
     return fail(err, { data: null });
@@ -84,9 +91,18 @@ export const getAdminResults = async (contestId) => {
 
 export const getAdminSubmissionCode = async (contestId, subId) => {
   try {
-    const res = await axios.get(`${SERVER}/contest/${contestId}/admin/submission/${subId}`, opts);
+    const res = await axios.get(`${SERVER}/contest/${contestId}/admin/submission/${subId}`, adminOpts());
     return res.data;
   } catch (err) {
     return fail(err, { data: null });
+  }
+};
+
+export const deleteContest = async (contestId) => {
+  try {
+    const res = await axios.delete(`${SERVER}/contest/${contestId}`, adminOpts());
+    return res.data;
+  } catch (err) {
+    return fail(err);
   }
 };
