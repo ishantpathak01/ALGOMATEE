@@ -63,18 +63,28 @@ async function runJudge0(lang, code, input) {
     headers["x-rapidapi-host"] = "judge0-ce.p.rapidapi.com";
   }
 
-  try {
-    const { data } = await axios.post(
-      `${base}/submissions?base64_encoded=false&wait=true`,
-      { language_id: languageId, source_code: wrapCode(lang, code), stdin: input, cpu_time_limit: 5 },
-      { headers, timeout: 20000 }
-    );
-    if (data.compile_output) return { stdout: "", stderr: data.compile_output };
-    if (data.status?.id === 5) return { stdout: data.stdout || "", stderr: "Time Limit Exceeded" };
-    return { stdout: data.stdout || "", stderr: data.stderr || (data.status?.id > 4 ? data.status.description : "") };
-  } catch (err) {
-    return { stdout: "", stderr: err?.response?.data?.message || err?.response?.data?.error || err.message };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const { data } = await axios.post(
+        `${base}/submissions?base64_encoded=false&wait=true`,
+        { language_id: languageId, source_code: wrapCode(lang, code), stdin: input, cpu_time_limit: 5 },
+        { headers, timeout: 20000 }
+      );
+      await sleep(400);
+      if (data.compile_output) return { stdout: "", stderr: data.compile_output };
+      if (data.status?.id === 5) return { stdout: data.stdout || "", stderr: "Time Limit Exceeded" };
+      return { stdout: data.stdout || "", stderr: data.stderr || (data.status?.id > 4 ? data.status.description : "") };
+    } catch (err) {
+      if (err?.response?.status === 429 && attempt < 4) {
+        await sleep(1500 * (attempt + 1));
+        continue;
+      }
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err.message;
+      return { stdout: "", stderr: err?.response?.status === 429 ? "Judge0 is busy (rate limited). Please try again in a few seconds." : msg };
+    }
   }
+  return { stdout: "", stderr: "Judge0 is busy. Please try again." };
 }
 
 export function normalizeLang(l) {
