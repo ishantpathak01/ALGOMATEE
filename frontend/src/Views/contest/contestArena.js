@@ -4,7 +4,7 @@ import { Resizable } from "re-resizable";
 import Editor from "./../../components/practice/coding/editor";
 import ProblemStatement from "./../../components/practice/coding/problemStatement";
 import CustomTestcases from "./../../components/practice/coding/testcases";
-import { getContestById, submitContestProblem, enterContest, getLeaderboard } from "../../APIs/contest";
+import { getContestById, submitContestProblem, enterContest } from "../../APIs/contest";
 import { executeCode } from "../../utils/codeRunner";
 import { useAppContext } from "../../context/userContext";
 import toast from "react-hot-toast";
@@ -12,14 +12,11 @@ import {
   Trophy,
   Clock,
   Code2,
-  ExternalLink,
   ChevronLeft,
   Award,
   Sparkles,
   CheckCircle,
   XCircle,
-  Users,
-  X,
   LogOut,
   AlertTriangle
 } from "lucide-react";
@@ -36,12 +33,10 @@ export default function ContestArena() {
   const [isRunning, setIsRunning] = useState(false);
   const [activeTerminalTab, setActiveTerminalTab] = useState("custom");
   const [solvedProblemIds, setSolvedProblemIds] = useState([]);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [totalScore, setTotalScore] = useState(0);
   const [enteredAt, setEnteredAt] = useState(null);
   const [endsAtMs, setEndsAtMs] = useState(null);
   const [now, setNow] = useState(Date.now());
-  const [liveBoard, setLiveBoard] = useState([]);
   
   // Contest Rules & Warning States
   const [hasStarted, setHasStarted] = useState(false);
@@ -77,19 +72,6 @@ export default function ContestArena() {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [enteredAt]);
-
-  // Real leaderboard from the server, refreshed every 5s while it is open
-  useEffect(() => {
-    if (!showLeaderboard) return;
-    let alive = true;
-    const load = async () => {
-      const r = await getLeaderboard(contestId);
-      if (alive && Array.isArray(r?.data)) setLiveBoard(r.data);
-    };
-    load();
-    const t = setInterval(load, 5000);
-    return () => { alive = false; clearInterval(t); };
-  }, [showLeaderboard, contestId]);
 
   // Handle Fullscreen & 3 Warnings Logic
   useEffect(() => {
@@ -446,13 +428,6 @@ export default function ContestArena() {
             <span>Score: {totalScore} pts</span>
           </div>
 
-          <button
-            onClick={() => setShowLeaderboard(true)}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/40 text-xs font-semibold transition-all shadow"
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Leaderboard</span>
-          </button>
         </div>
       </header>
 
@@ -585,92 +560,6 @@ export default function ContestArena() {
         </div>
       </div>
 
-      {/* Leaderboard Modal */}
-      {showLeaderboard && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-between border-b border-gray-800 pb-3">
-              <div className="flex items-center space-x-2">
-                <Trophy className="w-6 h-6 text-amber-400" />
-                <h3 className="text-lg font-bold text-white">
-                  Contest Leaderboard
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowLeaderboard(false)}
-                className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-gray-800"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
-              {liveBoard.map((entry, idx) => (
-                <div
-                  key={idx}
-                  className={`flex items-center justify-between p-3 rounded-xl border text-sm ${
-                    idx === 0
-                      ? "bg-amber-950/20 border-amber-800/60"
-                      : idx === 1
-                      ? "bg-slate-800/40 border-slate-700/60"
-                      : "bg-gray-950 border-gray-800"
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <span
-                      className={`w-6 text-center font-bold font-mono ${
-                        idx === 0
-                          ? "text-amber-400 text-lg"
-                          : idx === 1
-                          ? "text-slate-300"
-                          : idx === 2
-                          ? "text-amber-600"
-                          : "text-gray-500"
-                      }`}
-                    >
-                      #{idx + 1}
-                    </span>
-                    <img
-                      src={
-                        entry.avatar ||
-                        `https://api.dicebear.com/7.x/bottts/svg?seed=${entry.userName}`
-                      }
-                      alt={entry.userName}
-                      className="w-8 h-8 rounded-full border border-gray-700 bg-gray-800"
-                    />
-                    <div>
-                      <p className="font-semibold text-white">
-                        {entry.userName}
-                      </p>
-                      <p className="text-[11px] text-gray-400">
-                        {entry.problemsSolved || 0} Solved · {entry.finishTimeMinutes || 0} min{entry.wrongSubmissions ? ` (incl. ${entry.wrongSubmissions * 5} min penalty)` : ""}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <span className="font-mono font-bold text-emerald-400 text-base">
-                      {entry.score} pts
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {liveBoard.length === 0 && (
-              <p className="text-center text-gray-500 text-sm py-6">No participants yet.</p>
-            )}
-            <div className="pt-2 text-center">
-              <button
-                onClick={() => setShowLeaderboard(false)}
-                className="px-6 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-white text-xs font-semibold transition-all"
-              >
-                Close Leaderboard
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

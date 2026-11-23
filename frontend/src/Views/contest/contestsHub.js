@@ -54,7 +54,7 @@ export default function ContestsHub() {
           </h1>
           <p className="text-gray-400 text-sm md:text-base leading-relaxed">
             Assigned by your mentors. Solve the problems, beat the clock and climb
-            the live leaderboard!
+            finish before the time runs out!
           </p>
         </div>
 
@@ -183,7 +183,7 @@ export default function ContestsHub() {
                       <span>{contest.durationMinutes || 90} mins</span>
                       <span className="mx-1">·</span>
                       <Users className="w-3.5 h-3.5" />
-                      <span>{contest.leaderboard?.length || 12} participants</span>
+                      <span>{contest.participantCount || 0} participants</span>
                     </div>
 
                     <Link

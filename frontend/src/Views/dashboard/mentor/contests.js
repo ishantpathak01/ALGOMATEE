@@ -257,7 +257,7 @@ export default function MentorContests() {
                     <span>·</span>
                     <span>{c.startTime ? new Date(c.startTime).toLocaleString() : ""} → {c.endTime ? new Date(c.endTime).toLocaleString() : ""}</span>
                     <span>·</span>
-                    <span>{c.leaderboard?.length || 0} contestants</span>
+                    <span>{c.participantCount || 0} contestants</span>
                   </div>
 
                   <Link

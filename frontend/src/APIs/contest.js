@@ -72,3 +72,21 @@ export const submitContestProblem = async (contestId, data) => {
     return fail(err);
   }
 };
+
+export const getAdminResults = async (contestId) => {
+  try {
+    const res = await axios.get(`${SERVER}/contest/${contestId}/admin/results`, opts);
+    return res.data;
+  } catch (err) {
+    return fail(err, { data: null });
+  }
+};
+
+export const getAdminSubmissionCode = async (contestId, subId) => {
+  try {
+    const res = await axios.get(`${SERVER}/contest/${contestId}/admin/submission/${subId}`, opts);
+    return res.data;
+  } catch (err) {
+    return fail(err, { data: null });
+  }
+};

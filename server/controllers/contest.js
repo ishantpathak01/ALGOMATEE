@@ -19,7 +19,8 @@ const sanitize = (contestDoc) => {
       t.isHidden ? { ...t, output: "", explanation: "" } : t
     ),
   }));
-  c.leaderboard = computeLeaderboard(contestDoc);
+  c.participantCount = (contestDoc.participants || []).length;
+  delete c.leaderboard; // ranking is admin-only; old stored rows are never sent
   return c;
 };
 
@@ -86,6 +87,159 @@ export function computeLeaderboard(contest) {
   list.forEach((r, i) => (r.rank = i + 1));
   return list;
 }
+
+// ---------------------------------------------------------------- ADMIN ----
+const ADMIN_VALUES = ["admin", "superadmin", "administrator"];
+
+/** Admin if: email listed in env ADMIN_EMAILS, or a role-like field says admin. Fails closed. */
+export const isAdminUser = (userDoc) => {
+  if (!userDoc) return false;
+  const u = userDoc.toObject ? userDoc.toObject() : userDoc;
+  const emails = (process.env.ADMIN_EMAILS || "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+  if (u.Email && emails.includes(String(u.Email).toLowerCase())) return true;
+  if (u.isAdmin === true || u.IsAdmin === true) return true;
+  for (const k of ["UserType", "Usertype", "userType", "Role", "role", "Type", "type"]) {
+    if (u[k] && ADMIN_VALUES.includes(String(u[k]).toLowerCase())) return true;
+  }
+  return false;
+};
+
+export const requireAdmin = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.Id);
+    if (!isAdminUser(user)) {
+      return res.status(403).json({ status: 403, message: "Only admin can view this." });
+    }
+    next();
+  } catch (err) {
+    return res.status(500).json({ status: 500, message: err.message });
+  }
+};
+
+/** Full picture for the admin, from real stored data only. */
+export function computeAdminReport(contest) {
+  const problems = contest.problems || [];
+  const subs = [...(contest.submissions || [])].sort((a, b) => new Date(a.submittedAt) - new Date(b.submittedAt));
+
+  const rows = (contest.participants || []).map((part) => {
+    const mine = subs.filter((s) => s.userId === part.userId);
+    let score = 0, solved = 0, totalTime = 0, wrongTotal = 0, lastSolveMin = 0;
+
+    const perProblem = problems.map((p) => {
+      const pid = String(p._id);
+      const list = mine.filter((s) => String(s.problemId) === pid);
+      const firstOk = list.find((s) => s.isAccepted || s.status === "Accepted");
+      const before = firstOk ? list.filter((s) => s.submittedAt < firstOk.submittedAt || s === firstOk).length - 1 : list.length;
+      const penalty = firstOk ? before * WRONG_PENALTY_MINUTES : 0;
+      if (firstOk) {
+        score += p.points || 0;
+        solved += 1;
+        totalTime += (firstOk.minutesFromEntry || 0) + penalty;
+        wrongTotal += before;
+        lastSolveMin = Math.max(lastSolveMin, firstOk.minutesFromEntry || 0);
+      }
+      const best = list.reduce((m, s) => Math.max(m, s.passedTests || 0), 0);
+      const last = list[list.length - 1];
+      return {
+        problemId: pid,
+        title: p.title,
+        points: p.points || 0,
+        solved: !!firstOk,
+        minutes: firstOk ? firstOk.minutesFromEntry || 0 : null,
+        wrongBeforeSolve: firstOk ? before : 0,
+        penaltyMinutes: penalty,
+        attempts: list.length,
+        bestPassed: best,
+        totalTests: (p.testcases || []).length,
+        lastVerdict: last ? last.status : "Not attempted",
+        submissions: list.map((s) => ({
+          id: String(s._id),
+          status: s.status,
+          passed: s.passedTests,
+          total: s.totalTests,
+          language: s.language,
+          minutesFromEntry: s.minutesFromEntry,
+          submittedAt: s.submittedAt,
+        })),
+      };
+    });
+
+    return {
+      userId: part.userId,
+      name: part.userName,
+      enteredAt: part.enteredAt,
+      score,
+      solvedCount: solved,
+      totalProblems: problems.length,
+      allSolved: problems.length > 0 && solved === problems.length,
+      totalTimeMinutes: totalTime, // ranking time: minutes + 5 min per wrong try
+      timeToSolveAllMinutes: problems.length > 0 && solved === problems.length ? lastSolveMin : null, // real clock time
+      wrongSubmissions: wrongTotal,
+      totalSubmissions: mine.length,
+      perProblem,
+    };
+  });
+
+  rows.sort((a, b) => b.score - a.score || a.totalTimeMinutes - b.totalTimeMinutes);
+  rows.forEach((r, i) => (r.rank = i + 1));
+  return rows;
+}
+
+export const getAdminResults = async (req, res) => {
+  try {
+    if (!isId(req.params.contestId)) return res.status(404).json({ status: 404, message: "Contest not found." });
+    const contest = await Contest.findById(req.params.contestId);
+    if (!contest) return res.status(404).json({ status: 404, message: "Contest not found." });
+
+    const rows = computeAdminReport(contest);
+
+    // attach e-mails from the user collection (best effort)
+    try {
+      const users = await User.find({ _id: { $in: rows.map((r) => r.userId) } }, { Email: 1 });
+      const map = {};
+      users.forEach((u) => (map[String(u._id)] = u.Email));
+      rows.forEach((r) => (r.email = map[r.userId] || ""));
+    } catch (e) {}
+
+    const finishers = rows.filter((r) => r.allSolved);
+    return res.status(200).json({
+      status: 200,
+      data: {
+        contest: {
+          id: String(contest._id),
+          title: contest.title,
+          startTime: contest.startTime,
+          endTime: contest.endTime,
+          durationMinutes: contest.durationMinutes,
+          problems: contest.problems.map((p) => ({ id: String(p._id), title: p.title, points: p.points, difficulty: p.difficulty })),
+        },
+        summary: {
+          registered: rows.length,
+          solvedAll: finishers.length,
+          avgTimeToSolveAll: finishers.length
+            ? Math.round(finishers.reduce((t, r) => t + r.timeToSolveAllMinutes, 0) / finishers.length)
+            : null,
+        },
+        participants: rows,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ status: 500, message: err.message });
+  }
+};
+
+export const getAdminSubmissionCode = async (req, res) => {
+  try {
+    const { contestId, subId } = req.params;
+    if (!isId(contestId)) return res.status(404).json({ status: 404, message: "Contest not found." });
+    const contest = await Contest.findById(contestId);
+    const sub = contest?.submissions.id(subId);
+    if (!sub) return res.status(404).json({ status: 404, message: "Submission not found." });
+    return res.status(200).json({ status: 200, data: { code: sub.code, language: sub.language, status: sub.status, userName: sub.userName } });
+  } catch (err) {
+    return res.status(500).json({ status: 500, message: err.message });
+  }
+};
 
 /** The contest shown on the home screen = the most recently assigned one that has not ended. */
 export const getWeeklyContest = async (req, res) => {
