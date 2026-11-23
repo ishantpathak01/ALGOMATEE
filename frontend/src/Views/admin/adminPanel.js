@@ -1038,7 +1038,15 @@ export default function AdminPanel() {
                     >
                       <div className="flex items-center space-x-3">
                         <img
-                          src={`https://api.dicebear.com/7.x/bottts/svg?seed=${u.Name}`}
+                          src={
+                            u.Picture && !/freepik\.com/i.test(u.Picture)
+                              ? u.Picture
+                              : `https://api.dicebear.com/7.x/bottts/svg?seed=${u.Name}`
+                          }
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = `https://api.dicebear.com/7.x/bottts/svg?seed=${u.Name}`;
+                          }}
                           alt={u.Name}
                           className="w-8 h-8 rounded-full bg-gray-800 border border-gray-700"
                         />
