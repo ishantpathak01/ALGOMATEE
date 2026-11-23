@@ -1,14 +1,12 @@
-import React, { useState } from "react";
+import React from "react";
 import Logo from "./../../assets/Logos/AlgoMate.png";
 import { Link, useLocation } from "react-router-dom";
-import HeaderBanner from "./../courseViews/headerBanner";
 import { useAppContext } from "../../context/userContext";
 import { Login } from "@mui/icons-material";
 import "./logo.css";
 import { avatarFor, onAvatarError } from "../../utils/avatar";
 import { ShoppingBag } from "lucide-react";
 function Header() {
-  const [showBanner, setShowBanner] = useState(false);
   const { user } = useAppContext();
   const location = useLocation();
 
@@ -43,42 +41,18 @@ function Header() {
       {/* Navigation & Actions */}
       <section className="hidden sm:flex flex-row space-x-6">
         {/* Home */}
-        <div
-          onMouseEnter={() => setShowBanner(true)}
-          onMouseLeave={() => setShowBanner(false)}
-        >
-          <Link to="/">
-            <button className="text-white hover:bg-slate-800 px-8 py-2 rounded-md transition-all duration-500 flex flex-col items-center">
-              <img
-                alt="icon"
-                className="w-5 h-5 opacity-80"
-                src="https://img.icons8.com/?size=100&id=14096&format=png&color=ffffff"
-              />
-              <h2 className="text-sm">Home</h2>
-            </button>
-          </Link>
-
-          {showBanner && (
-            <>
-              <div className="absolute w-full h-20 left-0"></div>
-              <div className="mt-0">
-                <HeaderBanner hide={setShowBanner} />
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Jobs */}
-        <Link to="/jobs">
+        <Link to="/">
           <button className="text-white hover:bg-slate-800 px-8 py-2 rounded-md transition-all duration-500 flex flex-col items-center">
             <img
               alt="icon"
               className="w-5 h-5 opacity-80"
-              src="https://img.icons8.com/?size=100&id=85073&format=png&color=ffffff"
+              src="https://img.icons8.com/?size=100&id=14096&format=png&color=ffffff"
             />
-            <h2 className="text-sm">Jobs</h2>
+            <h2 className="text-sm">Home</h2>
           </button>
         </Link>
+
+        {/* Jobs: hidden for now. Restore by adding back <Link to="/jobs"> button here. */}
 
         <Link to="/sheet">
           <button className="text-white hover:bg-slate-800 px-8 py-2 rounded-md transition-all duration-500 flex flex-col items-center">
