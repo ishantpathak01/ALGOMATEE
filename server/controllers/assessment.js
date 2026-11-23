@@ -1,5 +1,5 @@
 import axios from "axios";
-import vm from "vm";
+import { executeOne, outputsMatch } from "../utils/compiler/execute.js";
 import VerifiedArticle from "../models/articles/verifiedArticles.js";
 import User from "./../models/user.js";
 import CodingProblem from "../models/Problems/Coding.js";
@@ -296,109 +296,11 @@ export const runCodingCode = async (req, res) => {
       let stderr = "";
       let passed = false;
 
-      if (lang === "javascript" || lang === "js") {
-        try {
-          const logs = [];
-          const sandbox = {
-            console: {
-              log: (...args) =>
-                logs.push(
-                  args
-                    .map((a) =>
-                      typeof a === "object" ? JSON.stringify(a) : String(a)
-                    )
-                    .join(" ")
-                ),
-              error: (...args) => logs.push("[ERR] " + args.join(" ")),
-              warn: (...args) => logs.push("[WARN] " + args.join(" ")),
-            },
-            input: tcInput,
-          };
-          const scriptCode = `
-            const input = ${JSON.stringify(tcInput)};
-            ${Code}
-          `;
-          vm.createContext(sandbox);
-          const result = vm.runInContext(scriptCode, sandbox, { timeout: 2000 });
-          stdout = logs.join("\n");
-          if (!stdout && result !== undefined) {
-            stdout = String(result);
-          }
-        } catch (err) {
-          stderr = err.message || String(err);
-        }
-      } else {
-        let codeToExecute = Code;
-        
-        // Harness for Java LeetCode-style submissions
-        if (lang === "java" && !Code.includes("public static void main")) {
-            const methodMatch = Code.match(/public\s+(?:\w+\s+)*(\w+)\s+([a-zA-Z0-9_]+)\s*\(/);
-            const methodName = methodMatch ? methodMatch[2] : "checkValidString";
-            
-            codeToExecute = `
-import java.util.*;
-${Code}
-public class Main {
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        if(scanner.hasNext()) {
-            String input = scanner.next();
-            Solution sol = new Solution();
-            System.out.print(sol.${methodName}(input));
-        }
-    }
-}`;
-        }
-
-        try {
-            // Map your languages to Piston API requirements
-            const pistonLangMap = {
-                "python": { language: "python", version: "3.10.0" },
-                "cpp": { language: "c++", version: "10.2.0" },
-                "java": { language: "java", version: "15.0.2" },
-                "js": { language: "javascript", version: "18.15.0" },
-                "javascript": { language: "javascript", version: "18.15.0" },
-                "c": { language: "c", version: "10.2.0" }
-            };
-
-            const pistonEnv = pistonLangMap[lang] || { language: lang, version: "*" };
-            const fileName = lang === "java" ? "Main.java" : `script.${lang === 'python' ? 'py' : lang === 'cpp' ? 'cpp' : 'js'}`;
-
-            // Send directly to the free Piston Code Execution API
-      const response = await axios.post("https://emkc.org/api/v2/piston/execute", {
-                language: pistonEnv.language,
-                version: pistonEnv.version,
-                files: [
-                    {
-                        name: fileName,
-                        content: codeToExecute
-                    }
-                ],
-                stdin: tcInput,
-                compile_timeout: 10000,
-                run_timeout: 5000
-            });
-
-            // Parse Piston's response format
-            if (response.data.compile && response.data.compile.code !== 0) {
-                stderr = response.data.compile.stderr || response.data.compile.output;
-            } else if (response.data.run) {
-                stdout = response.data.run.stdout || "";
-                stderr = response.data.run.stderr || "";
-                if (response.data.run.code !== 0 && !stderr) {
-                    stderr = response.data.run.output;
-                }
-            } else {
-                stderr = "Unknown error occurred during execution.";
-            }
-        } catch (err) {
-            stderr = err?.response?.data?.message || err.message || String(err);
-        }
-      }
+      ({ stdout, stderr } = await executeOne(lang, Code, tcInput));
 
       const actualTrimmed = (stdout || "").trim();
       if (tcExpected) {
-        passed = actualTrimmed === tcExpected || actualTrimmed.endsWith(tcExpected);
+        passed = !stderr && outputsMatch(stdout, tcExpected);
       } else {
         passed = !stderr;
       }
@@ -457,9 +359,10 @@ export const submitCodingCode = async (req, res) => {
     }
 
     const lang = (Language || "javascript").toLowerCase();
-    let problemTestcases = Testcases || [];
+    // Always judge against the test cases saved with the question (the ones YOU wrote).
+    let problemTestcases = [];
 
-    if ((!problemTestcases || problemTestcases.length === 0) && QuestionId) {
+    if (QuestionId) {
       try {
         const problem = await CodingProblem.findById(QuestionId);
         if (problem && problem.Testcases && problem.Testcases.length > 0) {
@@ -467,6 +370,7 @@ export const submitCodingCode = async (req, res) => {
         }
       } catch (e) {}
     }
+    if (problemTestcases.length === 0) problemTestcases = Testcases || [];
 
     let passedCount = 0;
     const totalTestCases = problemTestcases.length > 0 ? problemTestcases.length : 1;
@@ -479,78 +383,11 @@ export const submitCodingCode = async (req, res) => {
         let stderr = "";
         let passed = false;
 
-        if (lang === "javascript" || lang === "js") {
-            try {
-                const sandbox = { console: { log: () => {}, error: () => {}, warn: () => {} }, input: tcInput };
-                const scriptCode = `const input = ${JSON.stringify(tcInput)};\n${Code}`;
-                vm.createContext(sandbox);
-                const result = vm.runInContext(scriptCode, sandbox, { timeout: 2000 });
-                if (result !== undefined) stdout = String(result);
-            } catch (err) {
-                stderr = err.message;
-            }
-        } else {
-            let codeToExecute = Code;
-            if (lang === "java" && !Code.includes("public static void main")) {
-                const methodMatch = Code.match(/public\s+(?:\w+\s+)*(\w+)\s+([a-zA-Z0-9_]+)\s*\(/);
-                const methodName = methodMatch ? methodMatch[2] : "checkValidString";
-                codeToExecute = `
-import java.util.*;
-${Code}
-public class Main {
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        if(scanner.hasNext()) {
-            String input = scanner.next();
-            Solution sol = new Solution();
-            System.out.print(sol.${methodName}(input));
-        }
-    }
-}`;
-            }
-
-            try {
-                const pistonLangMap = {
-                    "python": { language: "python", version: "3.10.0" },
-                    "cpp": { language: "c++", version: "10.2.0" },
-                    "java": { language: "java", version: "15.0.2" },
-                    "js": { language: "javascript", version: "18.15.0" },
-                    "javascript": { language: "javascript", version: "18.15.0" },
-                    "c": { language: "c", version: "10.2.0" }
-                };
-
-                const pistonEnv = pistonLangMap[lang] || { language: lang, version: "*" };
-                const fileName = lang === "java" ? "Main.java" : `script.${lang === 'python' ? 'py' : lang === 'cpp' ? 'cpp' : 'js'}`;
-
-                const response = await axios.post("https://emkc.org/api/v2/piston/execute", {
-
-                    language: pistonEnv.language,
-                    version: pistonEnv.version,
-                    files: [{ name: fileName, content: codeToExecute }],
-                    stdin: tcInput,
-                    compile_timeout: 10000,
-                    run_timeout: 5000
-                });
-
-                if (response.data.compile && response.data.compile.code !== 0) {
-                    stderr = response.data.compile.stderr || response.data.compile.output;
-                } else if (response.data.run) {
-                    stdout = response.data.run.stdout || "";
-                    stderr = response.data.run.stderr || "";
-                    if (response.data.run.code !== 0 && !stderr) {
-                        stderr = response.data.run.output;
-                    }
-                } else {
-                    stderr = "Unknown error occurred during execution.";
-                }
-            } catch (err) {
-                stderr = err?.response?.data?.message || err.message || String(err);
-            }
-        }
+        ({ stdout, stderr } = await executeOne(lang, Code, tcInput));
 
         const actualTrimmed = (stdout || "").trim();
         if (tcExpected) {
-            passed = actualTrimmed === tcExpected || actualTrimmed.endsWith(tcExpected);
+            passed = !stderr && outputsMatch(stdout, tcExpected);
         } else {
             passed = !stderr;
         }

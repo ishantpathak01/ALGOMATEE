@@ -6,10 +6,7 @@ import ReactQuill from "react-quill";
 import "react-quill/dist/quill.bubble.css";
 import { addCodingProblem, getCodingProblem } from "../../../../APIs/problem";
 import { useAppContext } from "../../../../context/userContext";
-import {
-  platforms,
-  codingProblemTags,
-} from "../../../../ConstantData/problems";
+import { codingProblemTags } from "../../../../ConstantData/problems";
 import { topTechCompanies } from "./../../../../ConstantData/companies";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
@@ -18,8 +15,6 @@ function Questions({ id, setView }) {
   const [name, setName] = useState("");
   const [TLE, setTLE] = useState("");
   const [MLE, setMLE] = useState("");
-  const [platform, setplatform] = useState(platforms[0]);
-  const [platformLink, setplatformLink] = useState("");
   const [testcases, setTestcases] = useState([{ input: "", output: "" }]);
   const [tags, setTags] = useState([]);
   const [statement, setStatement] = useState("Write problem statement here...");
@@ -63,16 +58,6 @@ function Questions({ id, setView }) {
       return;
     }
 
-    if (!platform) {
-      toast.error("Please select a valid platform.");
-      return;
-    }
-
-    if (platformLink && !/^https?:\/\/[^\s]+$/.test(platformLink)) {
-      toast.error("Invalid URL format for platform link.");
-      return;
-    }
-
     if (testcases.length === 0) {
       toast.error("At least one test case is required.");
       return;
@@ -96,8 +81,9 @@ function Questions({ id, setView }) {
       Statement: statement,
       TLE: TLE,
       MLE: MLE,
-      Platform: platform,
-      Link: platformLink,
+      // Questions are always your own, never from LeetCode/other sites.
+      Platform: "AlgoMate",
+      Link: "",
       ProblemId: id,
       Tags: tags,
       Companies: companyTag,
@@ -109,9 +95,7 @@ function Questions({ id, setView }) {
       toast.success(res.message);
       setView("CodingSheet");
     } else {
-      // Graceful fallback for offline mode
-      toast.success("Question saved successfully to Question Bank!");
-      setView("CodingSheet");
+      toast.error((res && res.message) || "Could not save the question. Is the server running?");
     }
 
     btn.disabled = false;
@@ -127,8 +111,6 @@ function Questions({ id, setView }) {
           setTLE(res.data.TLE);
           setStatement(res.data.Statement);
           setTestcases(res.data.Testcases);
-          setplatform(res.data.platform);
-          setplatformLink(res.data.Link);
           setName(res.data.Name);
           setTags(res.data.Tags);
           setCompanyTag(res.data.Companies);
@@ -336,30 +318,6 @@ function Questions({ id, setView }) {
                   onChange={(e) => setMLE(e.target.value)}
                   placeholder="Space Limit in ms"
                   className="m-2 bg-transparent pl-4 p-2 rounded border-2"
-                ></input>
-              </div>
-              <div className="flex flex-row justify-center items-center">
-                <select
-                  value={platform}
-                  onChange={(e) => setplatform(e.target.value)}
-                  className="p-2.5 pl-4 bg-transparent rounded border-2 m-2 focus:outline-none"
-                >
-                  {platforms.map((platform) => (
-                    <option
-                      className="text-black"
-                      key={platform}
-                      value={platform}
-                    >
-                      {platform}
-                    </option>
-                  ))}
-                </select>
-
-                <input
-                  value={platformLink}
-                  onChange={(e) => setplatformLink(e.target.value)}
-                  className="p-2 bg-transparent rounded border-2 m-2 w-80 pl-4 focus:outline-none"
-                  placeholder="platform URL"
                 ></input>
               </div>
             </div>
