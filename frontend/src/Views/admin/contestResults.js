@@ -7,9 +7,13 @@ import {
 
 const fmt = (m) => {
   if (m === null || m === undefined) return "—";
-  const h = Math.floor(m / 60);
-  const r = m % 60;
-  return h > 0 ? `${h}h ${String(r).padStart(2, "0")}m` : `${r}m`;
+  const total = Math.round(m * 60); // minutes (decimal) -> seconds
+  const h = Math.floor(total / 3600);
+  const mm = Math.floor((total % 3600) / 60);
+  const ss = total % 60;
+  if (h > 0) return `${h}h ${String(mm).padStart(2, "0")}m ${String(ss).padStart(2, "0")}s`;
+  if (mm > 0) return `${mm}m ${String(ss).padStart(2, "0")}s`;
+  return `${ss}s`;
 };
 const when = (d) => (d ? new Date(d).toLocaleString() : "—");
 

@@ -4,6 +4,16 @@ import { executeOne, outputsMatch } from "../utils/compiler/execute.js";
 
 export const WRONG_PENALTY_MINUTES = 5;
 
+const round2 = (n) => Math.round(n * 100) / 100;
+/** Minutes (with decimals) from the participant's entry to a submission, taken from real timestamps. */
+const minsOf = (sub, part) => {
+  if (sub?.submittedAt && part?.enteredAt) {
+    const ms = new Date(sub.submittedAt) - new Date(part.enteredAt);
+    if (!isNaN(ms)) return Math.max(0, round2(ms / 60000));
+  }
+  return sub?.minutesFromEntry || 0;
+};
+
 const isId = (id) => /^[a-f0-9]{24}$/i.test(String(id || ""));
 
 /** Never send other people's code or hidden expected outputs to the browser. */
@@ -74,7 +84,7 @@ export function computeLeaderboard(contest) {
       row._solved[pid] = true;
       row.score += pointsOf[pid] ?? s.pointsEarned ?? 0;
       row.problemsSolved += 1;
-      row.finishTimeMinutes += (s.minutesFromEntry || 0) + wrong * WRONG_PENALTY_MINUTES;
+      row.finishTimeMinutes = round2(row.finishTimeMinutes + minsOf(s, entered[s.userId]) + wrong * WRONG_PENALTY_MINUTES);
       row.wrongSubmissions += wrong;
       row.solvedProblemIds.push(pid);
     } else {
@@ -135,9 +145,9 @@ export function computeAdminReport(contest) {
       if (firstOk) {
         score += p.points || 0;
         solved += 1;
-        totalTime += (firstOk.minutesFromEntry || 0) + penalty;
+        totalTime = round2(totalTime + minsOf(firstOk, part) + penalty);
         wrongTotal += before;
-        lastSolveMin = Math.max(lastSolveMin, firstOk.minutesFromEntry || 0);
+        lastSolveMin = Math.max(lastSolveMin, minsOf(firstOk, part));
       }
       const best = list.reduce((m, s) => Math.max(m, s.passedTests || 0), 0);
       const last = list[list.length - 1];
@@ -146,7 +156,7 @@ export function computeAdminReport(contest) {
         title: p.title,
         points: p.points || 0,
         solved: !!firstOk,
-        minutes: firstOk ? firstOk.minutesFromEntry || 0 : null,
+        minutes: firstOk ? minsOf(firstOk, part) : null,
         wrongBeforeSolve: firstOk ? before : 0,
         penaltyMinutes: penalty,
         attempts: list.length,
@@ -159,7 +169,7 @@ export function computeAdminReport(contest) {
           passed: s.passedTests,
           total: s.totalTests,
           language: s.language,
-          minutesFromEntry: s.minutesFromEntry,
+          minutesFromEntry: minsOf(s, part),
           submittedAt: s.submittedAt,
         })),
       };
@@ -218,7 +228,7 @@ export const getAdminResults = async (req, res) => {
           registered: rows.length,
           solvedAll: finishers.length,
           avgTimeToSolveAll: finishers.length
-            ? Math.round(finishers.reduce((t, r) => t + r.timeToSolveAllMinutes, 0) / finishers.length)
+            ? round2(finishers.reduce((t, r) => t + r.timeToSolveAllMinutes, 0) / finishers.length)
             : null,
         },
         participants: rows,
@@ -421,7 +431,7 @@ export const submitContestProblem = async (req, res) => {
     const accepted = total > 0 && passed === total;
     if (!accepted && verdict === "Accepted") verdict = "Wrong Answer";
 
-    const minutesFromEntry = Math.max(0, Math.floor((now - new Date(part.enteredAt)) / 60000));
+    const minutesFromEntry = Math.max(0, round2((now - new Date(part.enteredAt)) / 60000));
     const wrongBefore = contest.submissions.filter(
       (s) => s.userId === userId && String(s.problemId) === String(problemId) && !s.isAccepted
     ).length;

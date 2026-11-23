@@ -43,6 +43,7 @@ export default function ContestArena() {
   const [isDisqualified, setIsDisqualified] = useState(false);
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [warningCount, setWarningCount] = useState(0);
+  const [escWarn, setEscWarn] = useState(false);
   
   // Custom Quit Modal States
   const [showQuitModal, setShowQuitModal] = useState(false);
@@ -111,6 +112,42 @@ export default function ContestArena() {
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, [hasStarted, contestId, user]);
+
+  // ESC key: keep full screen and only show a warning.
+  // Chrome/Edge: Keyboard Lock stops a quick ESC press from leaving full screen
+  // (holding ESC for ~2 seconds, or F11, can still exit - the browser does not allow blocking that,
+  // and that case is handled by the full-screen violation logic above).
+  useEffect(() => {
+    if (!hasStarted || isDisqualified) return;
+    let hideTimer;
+
+    const lockEsc = () => {
+      try {
+        if (document.fullscreenElement && navigator.keyboard?.lock) {
+          navigator.keyboard.lock(["Escape"]).catch(() => {});
+        }
+      } catch (e) {}
+    };
+
+    const onKeyDown = (e) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      setEscWarn(true);
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => setEscWarn(false), 4000);
+    };
+
+    lockEsc();
+    document.addEventListener("fullscreenchange", lockEsc);
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      clearTimeout(hideTimer);
+      document.removeEventListener("fullscreenchange", lockEsc);
+      window.removeEventListener("keydown", onKeyDown, true);
+      try { navigator.keyboard?.unlock?.(); } catch (e) {}
+    };
+  }, [hasStarted, isDisqualified]);
 
   const handleStartContest = async () => {
     try {
@@ -281,7 +318,7 @@ export default function ContestArena() {
           <h3 className="text-xl font-semibold text-red-400 mb-4 flex items-center gap-2"><Sparkles className="w-5 h-5"/> Strict Contest Rules</h3>
           <ul className="list-disc list-inside text-gray-300 space-y-3 text-lg">
             <li>This contest requires <b>Full Screen</b> mode.</li>
-            <li>If you press <kbd className="bg-gray-800 px-1 rounded">ESC</kbd> or switch tabs, you will receive a warning.</li>
+            <li>Pressing <kbd className="bg-gray-800 px-1 rounded">ESC</kbd> shows a warning. Leaving full screen or switching tabs counts as a violation.</li>
             <li>You have a maximum of <b>3 warnings</b> before permanent disqualification.</li>
             <li>You cannot pause or rejoin once started.</li>
           </ul>
@@ -321,6 +358,16 @@ export default function ContestArena() {
   return (
     <div className="h-screen w-full flex flex-col bg-gray-950 text-white overflow-hidden pt-16 relative">
       
+      {/* ESC warning banner (full screen stays on) */}
+      {escWarn && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-xl bg-yellow-500/15 border border-yellow-500/60 text-yellow-300 shadow-2xl backdrop-blur">
+          <AlertTriangle className="w-5 h-5" />
+          <span className="text-sm font-semibold">
+            Warning: Do not press ESC during the contest. Stay in full screen - leaving it counts as a violation.
+          </span>
+        </div>
+      )}
+
       {/* Type 'Quit' Modal Overlay */}
       {showQuitModal && (
         <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
