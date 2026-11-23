@@ -5,6 +5,7 @@ import HeaderBanner from "./../courseViews/headerBanner";
 import { useAppContext } from "../../context/userContext";
 import { Login } from "@mui/icons-material";
 import "./logo.css";
+import { avatarFor, onAvatarError } from "../../utils/avatar";
 function Header() {
   const [showBanner, setShowBanner] = useState(false);
   const { user } = useAppContext();
@@ -140,7 +141,8 @@ function Header() {
               <button className="bg-slate-600 justify-center w-40 bg-opacity-20 hover:bg-opacity-100 hover:scale-90 text-white font-serif tracking-wider px-4 py-2 scale-[85%] rounded-md transition-all duration-200 flex items-center space-x-4 mt-1">
                 <h2 className="truncate">{user.Name.split(" ")[0]}</h2>
                 <img
-                  src={user?.Picture}
+                  src={avatarFor(user?.Picture, user?.Name)}
+                  onError={onAvatarError(user?.Name)}
                   alt="profile_picture"
                   className="w-8 h-8 p-1 border-2 border-opacity-50 border-white rounded-full"
                 />

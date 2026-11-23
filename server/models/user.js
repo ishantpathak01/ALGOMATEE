@@ -49,8 +49,7 @@ const userSchema = mongoose.Schema({
   Picture: {
     type: String,
     required: true,
-    default:
-      "https://img.freepik.com/free-vector/blue-circle-with-white-user_78370-4707.jpg?t=st=1737463526~exp=1737467126~hmac=69f016f48e070b13e6bc7c3434ec3518aca7cefc49b5ca969af5aa3efcc53be9&w=740",
+    default: "https://api.dicebear.com/7.x/initials/svg?seed=User",
   },
   Type: {
     type: String,

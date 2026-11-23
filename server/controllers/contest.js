@@ -558,6 +558,13 @@ export const getPublishedWinners = async (req, res) => {
       .sort({ endTime: -1 })
       .limit(limit)
       .select("title endTime winners");
+    // Use each winner's CURRENT profile photo (the one saved at publish time may be old/broken).
+    const ids = [...new Set(list.flatMap((c) => (c.winners || []).map((w) => w.userId)).filter(isId))];
+    const pics = {};
+    if (ids.length) {
+      const users = await User.find({ _id: { $in: ids } }).select("Picture");
+      users.forEach((u) => (pics[String(u._id)] = u.Picture || ""));
+    }
     return res.status(200).json({
       status: 200,
       data: list
@@ -566,7 +573,12 @@ export const getPublishedWinners = async (req, res) => {
           id: String(c._id),
           title: c.title,
           endTime: c.endTime,
-          winners: [...c.winners].sort((a, b) => a.rank - b.rank),
+          winners: [...c.winners]
+            .sort((a, b) => a.rank - b.rank)
+            .map((w) => {
+              const o = w.toObject ? w.toObject() : { ...w };
+              return { ...o, avatar: pics[o.userId] || o.avatar || "" };
+            }),
         })),
     });
   } catch (err) {

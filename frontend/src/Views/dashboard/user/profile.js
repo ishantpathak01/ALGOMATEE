@@ -19,6 +19,7 @@ import TaskAltIcon from "@mui/icons-material/TaskAlt";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { avatarFor, onAvatarError } from "../../../utils/avatar";
 
 function Profile() {
   const { user, setUser } = useAppContext();
@@ -177,7 +178,8 @@ function Profile() {
             </label>
           ) : (
             <img
-              src={user?.Picture}
+              src={avatarFor(user?.Picture, user?.Name)}
+              onError={onAvatarError(user?.Name)}
               className="w-36 h-36 p-1 rounded-full shadow-md border-4 border-gray-700"
               alt="Profile"
             />

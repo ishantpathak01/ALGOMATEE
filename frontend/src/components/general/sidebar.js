@@ -6,6 +6,7 @@ import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import DataObjectOutlinedIcon from "@mui/icons-material/DataObjectOutlined";
 import SpeedOutlinedIcon from "@mui/icons-material/SpeedOutlined";
 import { getArticle } from "./../../APIs/mentor";
+import { avatarFor, onAvatarError } from "../../utils/avatar";
 function Sidebar() {
   const { courses, user } = useAppContext();
   const [openDropdown, setOpenDropdown] = useState("");
@@ -415,7 +416,8 @@ function Sidebar() {
           <div className="flex flex-col justify-center items-center w-full">
             <div className="flex flex-row justify-center items-center bg-slate-400 bg-opacity-20 text-slate-300 cursor-pointer p-2 m-2 rounded-md mt-4 w-[270px]">
               <img
-                src={user?.Picture}
+                src={avatarFor(user?.Picture, user?.Name)}
+                onError={onAvatarError(user?.Name)}
                 className=" border-2 border-slate-400  p-1 w-10 h-10 rounded-full"
               ></img>
               <div className="ml-3">

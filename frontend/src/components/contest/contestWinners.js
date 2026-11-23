@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Trophy, Crown } from "lucide-react";
 import { getPublishedWinners } from "../../APIs/contest";
+import { avatarFor, onAvatarError } from "../../utils/avatar";
 
 const fmt = (m) => {
   if (m === null || m === undefined) return "-";
@@ -58,7 +59,8 @@ export default function ContestWinners() {
                 <div key={w.userId} className={`rounded-2xl border bg-gradient-to-b ${st.glow} to-gray-900/60 p-5 text-center ${st.lift}`}>
                   <div className="text-3xl mb-2">{st.medal}</div>
                   <img
-                    src={w.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(w.userName || "Coder")}`}
+                    src={avatarFor(w.avatar, w.userName || "Coder")}
+                    onError={onAvatarError(w.userName || "Coder")}
                     alt={w.userName}
                     className={`${st.size} rounded-full object-cover mx-auto ring-4 ${st.ring}`}
                   />

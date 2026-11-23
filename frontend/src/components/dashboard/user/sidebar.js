@@ -16,6 +16,7 @@ import {
 import { useAppContext } from "../../../context/userContext";
 import { logout } from "../../../APIs/user";
 import toast from "react-hot-toast";
+import { avatarFor, onAvatarError } from "../../../utils/avatar";
 
 const sidebarVariants = {
   expanded: { width: 270 },
@@ -114,7 +115,8 @@ function SidebarLayout() {
             >
               <img
                 className="h-16 w-16 p-1 rounded-full border-4 border-gray-600 mb-3"
-                src={user?.Picture}
+                src={avatarFor(user?.Picture, user?.Name)}
+                onError={onAvatarError(user?.Name)}
                 alt="User profile"
               />
               <h2 className="text-white font-medium text-center">
