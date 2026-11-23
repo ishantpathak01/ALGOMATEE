@@ -39,6 +39,8 @@ export default function WeeklyContestBanner() {
       if (diff <= 0) {
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
         clearInterval(timer);
+        // Contest finished while the page is open: remove the banner right away.
+        if (contest.status !== "upcoming") setContest(null);
       } else {
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);

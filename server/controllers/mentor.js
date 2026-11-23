@@ -354,7 +354,7 @@ export const updateMentorProfile = async (req, res) => {
     if (profile != undefined) {
       const uploadResult = await new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
-          { folder: "Profile_Picture", resource_type: "auto" },
+          { folder: "Profile_Picture", resource_type: "image" },
           (error, result) => {
             if (error) reject(error);
             else resolve(result);

@@ -12,6 +12,8 @@ import {
   getAdminResults,
   getAdminSubmissionCode,
   deleteContest,
+  setContestWinners,
+  getPublishedWinners,
 } from "../controllers/contest.js";
 
 const router = express.Router();
@@ -65,6 +67,7 @@ const adminAuth = (req, res, next) => {
 // but we protect the actual contest data and submissions.
 
 router.get("/all", getAllContests);
+router.get("/winners", getPublishedWinners); // public: published winners for the home screen
 router.get("/weekly", verifyToken, getWeeklyContest);
 router.get("/:contestId/leaderboard", adminAuth, getLeaderboard);
 router.get("/:contestId/admin/results", adminAuth, getAdminResults);
@@ -72,6 +75,7 @@ router.get("/:contestId/admin/submission/:subId", adminAuth, getAdminSubmissionC
 router.post("/:contestId/enter", verifyToken, enterContest);
 router.get("/:id", verifyToken, getContestById);
 router.delete("/:contestId", adminAuth, deleteContest);
+router.post("/:contestId/winners", adminAuth, setContestWinners);
 router.post("/create", verifyToken, createContest);
 router.post("/:contestId/submit", verifyToken, submitContestProblem);
 

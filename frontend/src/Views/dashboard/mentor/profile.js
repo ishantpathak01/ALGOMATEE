@@ -33,9 +33,10 @@ function Profile() {
     const formData = new FormData();
     formData.append("Id", user?._id);
     formData.append("Data", JSON.stringify(updatedUser));
-    formData.append("Picture", picture);
+    if (picture) formData.append("Picture", picture);
 
     let res = await updateMentorProfile(formData);
+    if (!res) res = { status: 500, message: "Could not reach the server. Try again." };
     if (res.status == 200) {
       toast.success(res.message);
       setUser(updatedUser);
@@ -77,13 +78,27 @@ function Profile() {
           <div className="bg-[#2c303d] bg-opacity-50 w-2/5 mr-4 p-8 flex flex-col justify-center items-center rounded-xl">
             {editing ? (
               <label className="h-40 w-40 rounded-full bg-slate-400 shadow-lg text-slate-900 flex justify-center items-center border-2 border-slate-900 hover:bg-opacity-55 transition-all duration-200 cursor-pointer">
-                <AddAPhotoOutlinedIcon sx={{ fontSize: "40px" }} />
+                {picture ? (
+                  <img
+                    src={URL.createObjectURL(picture)}
+                    alt="Selected"
+                    className="h-full w-full rounded-full object-cover"
+                  />
+                ) : (
+                  <AddAPhotoOutlinedIcon sx={{ fontSize: "40px" }} />
+                )}
                 <input
                   onChange={(e) => {
-                    setPicture(e.target.files[0]);
+                    const f = e.target.files[0];
+                    if (!f) return;
+                    if (f.size > 5 * 1024 * 1024) {
+                      toast.error("Image must be under 5 MB.");
+                      return;
+                    }
+                    setPicture(f);
                   }}
                   type="file"
-                  accept="image/png"
+                  accept="image/png,image/jpeg,image/webp"
                   className="hidden"
                 />
               </label>

@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import toast from "react-hot-toast";
 import {
   getAllContests,
   getAdminResults,
   getAdminSubmissionCode,
+  setContestWinners,
 } from "../../APIs/contest";
 
 const fmt = (m) => {
@@ -24,6 +26,11 @@ export default function AdminContestResults({ embedded = false, initialContestId
   const [error, setError] = useState("");
   const [open, setOpen] = useState(null); // expanded participant userId
   const [codeView, setCodeView] = useState(null);
+  // Manual winners: { [userId]: 1 | 2 | 3 }. Loaded once per contest so the 10s refresh never wipes unsaved picks.
+  const [picks, setPicks] = useState({});
+  const [published, setPublished] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const picksLoadedFor = useRef("");
 
   useEffect(() => {
     (async () => {
@@ -41,6 +48,13 @@ export default function AdminContestResults({ embedded = false, initialContestId
     const r = await getAdminResults(contestId);
     if (r?.status === 200 && r.data) {
       setReport(r.data);
+      setPublished(!!r.data.winnersPublished);
+      if (picksLoadedFor.current !== contestId) {
+        const init = {};
+        (r.data.winners || []).forEach((w) => (init[w.userId] = w.rank));
+        setPicks(init);
+        picksLoadedFor.current = contestId;
+      }
       setError("");
     } else {
       setReport(null);
@@ -54,6 +68,33 @@ export default function AdminContestResults({ embedded = false, initialContestId
     const t = setInterval(load, 10000);
     return () => clearInterval(t);
   }, [load]);
+
+  const setRank = (userId, rank) => {
+    setPicks((prev) => {
+      const next = { ...prev };
+      if (rank) Object.keys(next).forEach((id) => { if (next[id] === rank) delete next[id]; }); // one person per rank
+      if (rank) next[userId] = rank;
+      else delete next[userId];
+      return next;
+    });
+  };
+
+  const saveWinners = async (publish) => {
+    const winners = Object.entries(picks).map(([userId, rank]) => ({ userId, rank: Number(rank) }));
+    if (publish && winners.length === 0) {
+      toast.error("Pick at least one winner first.");
+      return;
+    }
+    setSaving(true);
+    const r = await setContestWinners(contestId, { winners, publish });
+    setSaving(false);
+    if (r?.status === 200) {
+      toast.success(r.message || "Saved.");
+      setPublished(!!r.data?.winnersPublished);
+    } else {
+      toast.error(r?.message || "Could not save winners.");
+    }
+  };
 
   const viewCode = async (subId) => {
     const r = await getAdminSubmissionCode(contestId, subId);
@@ -123,18 +164,52 @@ export default function AdminContestResults({ embedded = false, initialContestId
               Ranking = most points, then least time (each wrong try adds 5 min).
             </p>
 
+            <div className="rounded-xl border border-amber-800/50 bg-amber-950/20 p-4 space-y-3">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div>
+                  <p className="font-bold text-amber-300">Top 3 winners (you choose manually)</p>
+                  <p className="text-xs text-gray-400">
+                    Set 1st / 2nd / 3rd in the “Winner” column below, then publish. Published winners show on the home
+                    screen after the contest ends. Status:{" "}
+                    <span className={published ? "text-emerald-400 font-semibold" : "text-gray-300 font-semibold"}>
+                      {published ? "Published" : "Not published"}
+                    </span>
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button disabled={saving} onClick={() => saveWinners(false)} className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-sm font-semibold border border-gray-700">
+                    {published ? "Unpublish (keep picks)" : "Save draft"}
+                  </button>
+                  <button disabled={saving} onClick={() => saveWinners(true)} className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-gray-950 text-sm font-bold">
+                    {published ? "Update published winners" : "Publish to home screen"}
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs">
+                {[1, 2, 3].map((rk) => {
+                  const id = Object.keys(picks).find((u) => picks[u] === rk);
+                  const person = id && report.participants.find((p) => p.userId === id);
+                  return (
+                    <span key={rk} className="px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-800">
+                      {["🥇 1st", "🥈 2nd", "🥉 3rd"][rk - 1]}: <b>{person ? person.name : "— not chosen —"}</b>
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="overflow-x-auto rounded-xl border border-gray-800">
               <table className="w-full text-sm">
                 <thead className="bg-gray-900 text-gray-400 text-xs uppercase">
                   <tr>
-                    {["#", "Participant", "Entered at", "Solved", "Points", "Ranking time", "Time to solve all", "Wrong tries", "Subs"].map((h) => (
+                    {["#", "Participant", "Entered at", "Solved", "Points", "Ranking time", "Time to solve all", "Wrong tries", "Subs", "Winner"].map((h) => (
                       <th key={h} className="px-3 py-2 text-left whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {report.participants.length === 0 && (
-                    <tr><td colSpan={9} className="px-3 py-6 text-center text-gray-500">Nobody has entered this contest yet.</td></tr>
+                    <tr><td colSpan={10} className="px-3 py-6 text-center text-gray-500">Nobody has entered this contest yet.</td></tr>
                   )}
                   {report.participants.map((p) => (
                     <React.Fragment key={p.userId}>
@@ -151,10 +226,22 @@ export default function AdminContestResults({ embedded = false, initialContestId
                         <td className="px-3 py-2">{fmt(p.timeToSolveAllMinutes)}</td>
                         <td className="px-3 py-2">{p.wrongSubmissions}</td>
                         <td className="px-3 py-2">{p.totalSubmissions}</td>
+                        <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                          <select
+                            value={picks[p.userId] || ""}
+                            onChange={(e) => setRank(p.userId, e.target.value ? Number(e.target.value) : 0)}
+                            className="bg-gray-900 border border-gray-700 rounded-lg px-2 py-1 text-xs"
+                          >
+                            <option value="">—</option>
+                            <option value="1">1st</option>
+                            <option value="2">2nd</option>
+                            <option value="3">3rd</option>
+                          </select>
+                        </td>
                       </tr>
                       {open === p.userId && (
                         <tr className="bg-gray-900/40">
-                          <td colSpan={9} className="px-4 py-3">
+                          <td colSpan={10} className="px-4 py-3">
                             <div className="grid gap-3 md:grid-cols-2">
                               {p.perProblem.map((q) => (
                                 <div key={q.problemId} className="rounded-lg border border-gray-800 p-3 space-y-1">

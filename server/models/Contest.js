@@ -88,6 +88,20 @@ const contestSchema = new mongoose.Schema(
       },
     ],
     submissions: [submissionSchema],
+    // Top 3 chosen MANUALLY by the admin. Shown on the home screen only when winnersPublished is true.
+    winners: [
+      {
+        rank: { type: Number, min: 1, max: 3 },
+        userId: { type: String },
+        userName: { type: String, default: "Coder" },
+        avatar: { type: String, default: "" },
+        score: { type: Number, default: 0 },
+        problemsSolved: { type: Number, default: 0 },
+        totalProblems: { type: Number, default: 0 },
+        timeMinutes: { type: Number, default: 0 },
+      },
+    ],
+    winnersPublished: { type: Boolean, default: false },
     leaderboard: [
       {
         userId: { type: String },

@@ -22,6 +22,7 @@ const sanitize = (contestDoc) => {
   const nowMs = Date.now();
   c.status = nowMs < new Date(c.startTime).getTime() ? "upcoming" : nowMs > new Date(c.endTime).getTime() ? "completed" : "active";
   delete c.submissions;
+  if (!c.winnersPublished) delete c.winners; // unpublished winners stay private
   delete c.participants;
   c.problems = (c.problems || []).map((p) => ({
     ...p,
@@ -232,6 +233,8 @@ export const getAdminResults = async (req, res) => {
             : null,
         },
         participants: rows,
+        winners: contest.winners || [],
+        winnersPublished: !!contest.winnersPublished,
       },
     });
   } catch (err) {
@@ -485,5 +488,88 @@ export const deleteContest = async (req, res) => {
     return res.status(200).json({ status: 200, message: "Contest deleted." });
   } catch (err) {
     return res.status(500).json({ status: 500, message: err.message });
+  }
+};
+
+
+/** Admin only: manually choose the top 3 (any participants, any order) and optionally publish them. */
+export const setContestWinners = async (req, res) => {
+  try {
+    const { contestId } = req.params;
+    if (!isId(contestId)) return res.status(404).json({ status: 404, message: "Contest not found." });
+    const contest = await Contest.findById(contestId);
+    if (!contest) return res.status(404).json({ status: 404, message: "Contest not found." });
+
+    const { winners = [], publish = false } = req.body || {};
+    if (!Array.isArray(winners) || winners.length > 3) {
+      return res.status(400).json({ status: 400, message: "Choose at most 3 winners." });
+    }
+    if (publish && winners.length === 0) {
+      return res.status(400).json({ status: 400, message: "Pick at least one winner before publishing." });
+    }
+
+    const report = computeAdminReport(contest);
+    const usedRanks = new Set();
+    const usedUsers = new Set();
+    const out = [];
+    for (const w of winners) {
+      const rank = Number(w.rank);
+      const userId = String(w.userId || "");
+      if (![1, 2, 3].includes(rank)) return res.status(400).json({ status: 400, message: "Rank must be 1, 2 or 3." });
+      if (usedRanks.has(rank) || usedUsers.has(userId)) {
+        return res.status(400).json({ status: 400, message: "Each rank and each participant can be used only once." });
+      }
+      const part = (contest.participants || []).find((p) => p.userId === userId);
+      if (!part) return res.status(400).json({ status: 400, message: "A winner must be a participant of this contest." });
+      usedRanks.add(rank);
+      usedUsers.add(userId);
+      const row = report.find((r) => r.userId === userId) || {};
+      out.push({
+        rank,
+        userId,
+        userName: part.userName || "Coder",
+        avatar: part.avatar || "",
+        score: row.score || 0,
+        problemsSolved: row.solvedCount || 0,
+        totalProblems: row.totalProblems || (contest.problems || []).length,
+        timeMinutes: row.totalTimeMinutes || 0,
+      });
+    }
+    out.sort((a, b) => a.rank - b.rank);
+
+    contest.winners = out;
+    contest.winnersPublished = !!publish && out.length > 0;
+    await contest.save();
+    return res.status(200).json({
+      status: 200,
+      message: contest.winnersPublished ? "Winners published on the home screen." : "Winners saved (not published).",
+      data: { winners: out, winnersPublished: contest.winnersPublished },
+    });
+  } catch (err) {
+    return res.status(500).json({ status: 500, message: err.message });
+  }
+};
+
+/** Public: latest ended contests whose winners the admin has published. */
+export const getPublishedWinners = async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 1, 1), 5);
+    const list = await Contest.find({ winnersPublished: true, endTime: { $lte: new Date() } })
+      .sort({ endTime: -1 })
+      .limit(limit)
+      .select("title endTime winners");
+    return res.status(200).json({
+      status: 200,
+      data: list
+        .filter((c) => (c.winners || []).length > 0)
+        .map((c) => ({
+          id: String(c._id),
+          title: c.title,
+          endTime: c.endTime,
+          winners: [...c.winners].sort((a, b) => a.rank - b.rank),
+        })),
+    });
+  } catch (err) {
+    return res.status(500).json({ status: 500, data: [], message: err.message });
   }
 };

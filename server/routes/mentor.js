@@ -35,7 +35,27 @@ dotenv.config();
 
 import multer from "multer";
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  fileFilter: (req, file, cb) =>
+    /^image\/(png|jpe?g|webp)$/.test(file.mimetype)
+      ? cb(null, true)
+      : cb(new Error("Only PNG, JPG or WEBP images are allowed.")),
+});
+// Returns a JSON error (not an HTML crash page) when the image is too big / wrong type.
+const uploadPicture = (req, res, next) =>
+  upload.single("Picture")(req, res, (err) =>
+    err
+      ? res.json({
+          status: 400,
+          message:
+            err.code === "LIMIT_FILE_SIZE"
+              ? "Image must be under 5 MB."
+              : err.message || "Invalid image.",
+        })
+      : next()
+  );
 
 const route = express.Router();
 
@@ -98,7 +118,7 @@ route.post("/postJob", verifyToken, mentorFound, mentorVerified, postJob);
 route.delete("/deleteJob", verifyToken, mentorFound, mentorVerified, deleteJob);
 route.post(
   "/updateMentorProfile",
-  upload.single("Picture"),
+  uploadPicture,
   verifyToken,
   mentorFound,
   updateMentorProfile

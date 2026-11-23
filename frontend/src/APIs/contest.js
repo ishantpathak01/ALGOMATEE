@@ -106,3 +106,21 @@ export const deleteContest = async (contestId) => {
     return fail(err);
   }
 };
+
+export const setContestWinners = async (contestId, payload) => {
+  try {
+    const res = await axios.post(`${SERVER}/contest/${contestId}/winners`, payload, adminOpts());
+    return res.data;
+  } catch (err) {
+    return fail(err);
+  }
+};
+
+export const getPublishedWinners = async (limit = 1) => {
+  try {
+    const res = await axios.get(`${SERVER}/contest/winners`, { ...opts, params: { limit } });
+    return res.data;
+  } catch (err) {
+    return fail(err, { data: [] });
+  }
+};

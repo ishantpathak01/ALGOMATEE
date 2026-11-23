@@ -594,7 +594,7 @@ export const updateUserProfile = async (req, res) => {
     if (profile != undefined) {
       const uploadResult = await new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
-          { folder: "Profile_Picture", resource_type: "auto" },
+          { folder: "Profile_Picture", resource_type: "image" },
           (error, result) => {
             if (error) reject(error);
             else resolve(result);
@@ -611,7 +611,17 @@ export const updateUserProfile = async (req, res) => {
       message: "Data updated successfully.",
     });
   } catch (error) {
-    return res.json({ status: 500, message: "Internal Server Error", error });
+    console.error("updateUserProfile failed:", error);
+    const cloudMissing =
+      !process.env.CLOUDINARY_CLOUD_NAME ||
+      !process.env.CLOUDINARY_API_KEY ||
+      !process.env.CLOUDINARY_API_SECRET;
+    return res.json({
+      status: 500,
+      message: cloudMissing
+        ? "Image storage (Cloudinary) is not configured on the server."
+        : "Could not update profile: " + (error?.message || "Internal Server Error"),
+    });
   }
 };
 
