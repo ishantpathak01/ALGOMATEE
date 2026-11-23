@@ -1,9 +1,11 @@
 // Java
-export const Java = `class Solution{
-    public class Main {
-        public static void main(String[] args) {
-            System.out.println("Hello, World!");
-        }
+export const Java = `import java.util.*;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        // Read input with sc.next() / sc.nextLine() / sc.nextInt()
+        System.out.println("Hello, World!");
     }
 }
 `;
