@@ -1,19 +1,15 @@
 import React from "react";
 import toast from "react-hot-toast";
-import { ShoppingBag, Coins, Sparkles } from "lucide-react";
-import { useAppContext } from "../../context/userContext";
+import { ShoppingBag, Sparkles } from "lucide-react";
 
 // Product pictures live in /public/store (swap the files to change them).
 const ITEMS = [
-  { id: 1, name: "AlgoMate T-Shirt", desc: "Premium black tee with the AlgoMate logo. Soft, breathable and made for long coding nights.", coins: 500, image: "/store/tshirt.webp" },
-  { id: 2, name: "AlgoMate Insulated Bottle", desc: "Matte black steel bottle that keeps drinks cold or hot while you solve problems.", coins: 400, image: "/store/bottle.webp" },
-  { id: 3, name: "AlgoMate Coffee Mug", desc: "Glossy black ceramic mug for your morning debug session.", coins: 250, image: "/store/mug.webp" },
+  { id: 1, name: "AlgoMate T-Shirt", desc: "Premium black tee with the AlgoMate logo. Soft, breathable and made for long coding nights.", image: "/store/tshirt.webp" },
+  { id: 2, name: "AlgoMate Insulated Bottle", desc: "Matte black steel bottle that keeps drinks cold or hot while you solve problems.", image: "/store/bottle.webp" },
+  { id: 3, name: "AlgoMate Coffee Mug", desc: "Glossy black ceramic mug for your morning debug session.", image: "/store/mug.webp" },
 ];
 
 export default function Store() {
-  const { user } = useAppContext();
-  const coins = user?.Coins;
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-950 via-[#0a0f1d] to-black text-white pt-28 pb-20 px-4 md:px-12">
       <div className="max-w-7xl mx-auto space-y-10">
@@ -25,13 +21,8 @@ export default function Store() {
             Goodies for Coders
           </h1>
           <p className="text-gray-400 text-sm md:text-base">
-            Earn coins by solving problems and winning contests, then redeem them for AlgoMate merch.
+            Official AlgoMate merch for coders. Launching soon!
           </p>
-          {typeof coins === "number" && (
-            <p className="inline-flex items-center gap-1.5 text-sm text-amber-300 font-semibold">
-              <Coins className="w-4 h-4" /> You have {coins} coins
-            </p>
-          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -44,14 +35,12 @@ export default function Store() {
                 <h3 className="font-bold text-2xl">{it.name}</h3>
                 <p className="text-sm text-gray-400 flex-1 leading-relaxed">{it.desc}</p>
                 <div className="flex items-center justify-between pt-3">
-                  <span className="flex items-center gap-2 text-amber-300 font-mono font-bold text-lg">
-                    <Coins className="w-5 h-5" /> {it.coins}
-                  </span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Coming soon</span>
                   <button
-                    onClick={() => toast("Store opens soon! Keep earning coins.", { icon: "🛍️" })}
+                    onClick={() => toast("Store opens soon! Stay tuned.", { icon: "🛍️" })}
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-sm font-bold transition"
                   >
-                    <ShoppingBag className="w-4 h-4" /> Redeem
+                    <ShoppingBag className="w-4 h-4" /> Notify me
                   </button>
                 </div>
               </div>
@@ -59,7 +48,7 @@ export default function Store() {
           ))}
         </div>
 
-        <p className="text-center text-xs text-gray-500">Demo items for now. Real products and redeeming are coming soon.</p>
+        <p className="text-center text-xs text-gray-500">Demo items for now. Real products are coming soon.</p>
       </div>
     </div>
   );
