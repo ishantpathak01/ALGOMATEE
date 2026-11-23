@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import { Resizable } from "re-resizable";
 import Editor from "./../../components/practice/coding/editor";
@@ -44,6 +44,9 @@ export default function ContestArena() {
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [warningCount, setWarningCount] = useState(0);
   const [escWarn, setEscWarn] = useState(false);
+  const [warningReason, setWarningReason] = useState("You have exited full-screen mode.");
+  const lastViolationAt = useRef(0);
+  const modalOpenRef = useRef(false);
   
   // Custom Quit Modal States
   const [showQuitModal, setShowQuitModal] = useState(false);
@@ -74,6 +77,68 @@ export default function ContestArena() {
     return () => clearInterval(t);
   }, [enteredAt]);
 
+  // One place that counts every rule violation (full-screen exit, leaving the page, switching tabs).
+  const registerViolation = useCallback((reason) => {
+    if (!hasStarted || isDisqualified) return;
+    if (modalOpenRef.current) return; // a warning is already on screen
+    const nowTs = Date.now();
+    if (nowTs - lastViolationAt.current < 1500) return; // one action can fire several events
+    lastViolationAt.current = nowTs;
+
+    const disqualifiedKey = `disqualified_${contestId}_${user?._id || 'guest'}`;
+    const warningsKey = `warnings_${contestId}_${user?._id || 'guest'}`;
+    const currentWarnings = parseInt(localStorage.getItem(warningsKey) || "0");
+    if (currentWarnings >= 3) {
+      localStorage.setItem(disqualifiedKey, "true");
+      setIsDisqualified(true);
+      setShowWarningModal(false);
+      modalOpenRef.current = false;
+    } else {
+      const next = currentWarnings + 1;
+      localStorage.setItem(warningsKey, String(next));
+      setWarningCount(next);
+      setWarningReason(reason);
+      modalOpenRef.current = true;
+      setShowWarningModal(true);
+    }
+  }, [hasStarted, isDisqualified, contestId, user]);
+
+  // Leaving the arena (header links like Home/Jobs, Back button, switching tab/window) = violation.
+  useEffect(() => {
+    if (!hasStarted || isDisqualified) return;
+
+    const onLinkClick = (e) => {
+      const a = e.target?.closest?.("a[href]");
+      if (!a) return;
+      e.preventDefault();
+      e.stopPropagation();
+      registerViolation("You tried to leave the contest page.");
+    };
+    const onVisibility = () => {
+      if (document.hidden) registerViolation("You switched to another tab or window.");
+    };
+    const onPopState = () => {
+      window.history.pushState(null, "", window.location.href);
+      registerViolation("You tried to go back / leave the contest page.");
+    };
+    const onBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    window.history.pushState(null, "", window.location.href);
+    document.addEventListener("click", onLinkClick, true);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("popstate", onPopState);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      document.removeEventListener("click", onLinkClick, true);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("popstate", onPopState);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [hasStarted, isDisqualified, registerViolation]);
+
   // Handle Fullscreen & 3 Warnings Logic
   useEffect(() => {
     const disqualifiedKey = `disqualified_${contestId}_${user?._id || 'guest'}`;
@@ -90,28 +155,12 @@ export default function ContestArena() {
 
     // Listen for exiting full screen
     const handleFullscreenChange = () => {
-      // If they exit fullscreen after starting, and aren't already disqualified
-      if (!document.fullscreenElement && hasStarted) {
-        const currentWarnings = parseInt(localStorage.getItem(warningsKey) || "0");
-        
-        // If they already had 3 warnings, this exit gets them disqualified!
-        if (currentWarnings >= 3) {
-          localStorage.setItem(disqualifiedKey, "true");
-          setIsDisqualified(true);
-          setShowWarningModal(false);
-        } else {
-          // Otherwise, give them a warning
-          const newWarningCount = currentWarnings + 1;
-          localStorage.setItem(warningsKey, newWarningCount.toString());
-          setWarningCount(newWarningCount);
-          setShowWarningModal(true);
-        }
-      }
+      if (!document.fullscreenElement) registerViolation("You have exited full-screen mode.");
     };
 
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, [hasStarted, contestId, user]);
+  }, [hasStarted, contestId, user, registerViolation]);
 
   // ESC key: keep full screen and only show a warning.
   // Chrome/Edge: Keyboard Lock stops a quick ESC press from leaving full screen
@@ -171,7 +220,10 @@ export default function ContestArena() {
 
   const handleReturnToFullscreen = async () => {
     try {
-      await document.documentElement.requestFullscreen();
+      // Still in full screen (e.g. they only clicked a nav link): just continue, no re-entry needed.
+      if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+      modalOpenRef.current = false;
+      lastViolationAt.current = Date.now();
       setShowWarningModal(false);
     } catch (err) {
       toast.error("You must allow full screen to continue the contest.");
@@ -340,7 +392,7 @@ export default function ContestArena() {
         <AlertTriangle className="w-24 h-24 text-yellow-500 animate-pulse" />
         <h2 className="text-4xl font-bold text-yellow-400">Warning {warningCount} of 3</h2>
         <p className="text-gray-400 max-w-lg text-center text-lg">
-          You have exited full-screen mode. This is a violation of the contest rules.
+          {warningReason} This is a violation of the contest rules.
           <br/><br/>
           If you do this <b className="text-white">{4 - warningCount} more time(s)</b>, you will be permanently disqualified and your score will be voided.
         </p>
@@ -348,7 +400,7 @@ export default function ContestArena() {
           onClick={handleReturnToFullscreen}
           className="px-8 py-4 bg-blue-600 hover:bg-blue-700 font-bold rounded-xl transition text-xl shadow-lg mt-4"
         >
-          Return to Full Screen
+          {document.fullscreenElement ? "Continue Contest" : "Return to Full Screen"}
         </button>
       </div>
     );
