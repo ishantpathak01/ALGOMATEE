@@ -85,9 +85,10 @@ export function computeLeaderboard(contest) {
   return list;
 }
 
+/** The contest shown on the home screen = the most recently assigned one that has not ended. */
 export const getWeeklyContest = async (req, res) => {
   try {
-    const contest = await Contest.findOne({ isWeekly: true, status: "active" }).sort({ createdAt: -1 });
+    const contest = await Contest.findOne({ endTime: { $gt: new Date() } }).sort({ createdAt: -1 });
     if (!contest) return res.status(200).json({ status: 200, data: null, message: "No active contest right now." });
     return res.status(200).json({ status: 200, data: sanitize(contest) });
   } catch (err) {
@@ -140,7 +141,7 @@ export const createContest = async (req, res) => {
       durationMinutes: durationMinutes || 90,
       rewardCoins: rewardCoins || 0,
       difficulty: difficulty || "Intermediate",
-      problems: problems.map((p) => ({ ...p, points: Number(p.points) })),
+      problems: problems.map((p) => ({ ...p, source: "AlgoMate", externalUrl: "", points: Number(p.points) })),
       startTime: startTime || new Date(),
       endTime: endTime || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       isWeekly: isWeekly !== undefined ? isWeekly : true,

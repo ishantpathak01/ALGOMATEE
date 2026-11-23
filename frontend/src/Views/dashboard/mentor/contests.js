@@ -23,72 +23,25 @@ export default function MentorContests() {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   // New Contest Form State
-  const [title, setTitle] = useState("AlgoMate Weekly Contest #43");
-  const [description, setDescription] = useState(
-    "Weekly competitive programming challenge featuring LeetCode patterns, GFG data structures, and custom mentor algorithms."
-  );
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [durationMinutes, setDurationMinutes] = useState(90);
   const [rewardCoins, setRewardCoins] = useState(300);
   const [difficulty, setDifficulty] = useState("Intermediate");
 
   // Problems to include in contest
-  const [problems, setProblems] = useState([
-    {
-      title: "Valid Parentheses with Wildcards",
-      source: "LeetCode",
-      externalUrl: "https://leetcode.com/problems/valid-parenthesis-string/",
-      difficulty: "Medium",
-      points: 100,
-      statement:
-        "Given a string s containing only '(', ')' and '*', return true if s is valid. '*' can be treated as a single right parenthesis, a single left parenthesis, or an empty string.",
-      inputFormat: "A string s of parentheses and asterisks",
-      outputFormat: "true or false",
-      constraints: "1 <= s.length <= 100",
-      testcases: [
-        { input: "()", output: "true" },
-        { input: "(*)", output: "true" },
-        { input: "(*))", output: "true" },
-      ],
-      mentorHint:
-        "Count minimum and maximum possible open brackets as you traverse from left to right.",
-    },
-    {
-      title: "Minimum Spanning Tree (Kruskal's & Prim's)",
-      source: "GeeksForGeeks",
-      externalUrl:
-        "https://www.geeksforgeeks.org/problems/minimum-spanning-tree/1",
-      difficulty: "Medium",
-      points: 150,
-      statement:
-        "Given a weighted, undirected and connected graph of V vertices and E edges, find the sum of weights of the edges of the Minimum Spanning Tree.",
-      inputFormat: "V and E followed by edge triplets (u, v, weight)",
-      outputFormat: "Integer sum of MST edge weights",
-      constraints: "1 <= V <= 1000, 1 <= E <= 10^4",
-      testcases: [
-        { input: "3 3\n0 1 5\n1 2 10\n0 2 1", output: "6" },
-        { input: "2 1\n0 1 5", output: "5" },
-      ],
-      mentorHint:
-        "Sort all edges by weight and use Disjoint Set Union (DSU) to avoid cycles.",
-    },
-    {
-      title: "Range Maximum Segment Tree with Lazy Propagation (Mentor Exclusive)",
-      source: "AlgoMate",
-      externalUrl: "",
-      difficulty: "Hard",
-      points: 200,
-      statement:
-        "Implement a segment tree supporting range addition updates and range maximum queries in O(log N) time.",
-      inputFormat: "N and Q followed by N array values and Q operations",
-      outputFormat: "Maximum value for each query operation",
-      constraints: "1 <= N, Q <= 10^5",
-      testcases: [
-        { input: "5 2\n1 2 3 4 5\n1 0 2 5\n2 0 4", output: "8" },
-      ],
-      mentorHint:
-        "Propagate lazy pending updates before querying child subtrees.",
-    },
-  ]);
+  const blankProblem = () => ({
+    title: "",
+    difficulty: "Easy",
+    points: 20,
+    statement: "",
+    inputFormat: "",
+    outputFormat: "",
+    constraints: "",
+    testcases: [{ input: "", output: "" }],
+    mentorHint: "",
+  });
+  const [problems, setProblems] = useState([blankProblem()]);
 
   const loadContests = async () => {
     setLoading(true);
@@ -104,22 +57,7 @@ export default function MentorContests() {
   }, []);
 
   const handleAddProblem = () => {
-    setProblems([
-      ...problems,
-      {
-        title: "New Contest Problem",
-        source: "LeetCode",
-        externalUrl: "https://leetcode.com",
-        difficulty: "Medium",
-        points: 25,
-        statement: "Enter problem description and instructions here...",
-        inputFormat: "",
-        outputFormat: "",
-        constraints: "",
-        testcases: [{ input: "test_input", output: "expected_output" }],
-        mentorHint: "",
-      },
-    ]);
+    setProblems([...problems, blankProblem()]);
   };
 
   const handleRemoveProblem = (idx) => {
@@ -133,6 +71,10 @@ export default function MentorContests() {
   const handleUpdateProblem = (idx, field, value) => {
     const updated = [...problems];
     updated[idx][field] = value;
+    if (field === "difficulty") {
+      // suggested points, you can still type any number you like
+      updated[idx].points = { Easy: 20, Medium: 25, Hard: 50 }[value] ?? updated[idx].points;
+    }
     setProblems(updated);
   };
 
@@ -211,8 +153,7 @@ export default function MentorContests() {
             Weekly Coding Contests
           </h1>
           <p className="text-gray-400 text-xs md:text-sm mt-1">
-            Assign weekly coding contests combining LeetCode problems, GeeksForGeeks
-            challenges, and your own custom DSA questions.
+            Assign weekly coding contests with your own problems, test cases and points.
           </p>
         </div>
 
@@ -283,9 +224,6 @@ export default function MentorContests() {
                           key={idx}
                           className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-gray-800 text-gray-300 border border-gray-700"
                         >
-                          <span className="font-bold text-blue-400 mr-1">
-                            {p.source}:
-                          </span>
                           {p.title}
                         </span>
                       ))}
@@ -326,7 +264,7 @@ export default function MentorContests() {
                   <span>Assign Weekly Coding Contest</span>
                 </h3>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  Combine LeetCode, GeeksForGeeks, and your own custom DSA problems.
+                  Add your own problems, test cases and points for each question.
                 </p>
               </div>
               <button
@@ -433,7 +371,7 @@ export default function MentorContests() {
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 gap-3">
                         <div className="space-y-1 md:col-span-2">
                           <label className="text-[11px] text-gray-400">
                             Problem Title
@@ -450,44 +388,9 @@ export default function MentorContests() {
                           />
                         </div>
 
-                        <div className="space-y-1">
-                          <label className="text-[11px] text-gray-400">
-                            Source Platform
-                          </label>
-                          <select
-                            value={prob.source}
-                            onChange={(e) =>
-                              handleUpdateProblem(idx, "source", e.target.value)
-                            }
-                            className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-xs text-white"
-                          >
-                            <option value="LeetCode">LeetCode</option>
-                            <option value="GeeksForGeeks">GeeksForGeeks</option>
-                            <option value="AlgoMate">Mentor Custom DSA</option>
-                          </select>
-                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div className="space-y-1 md:col-span-2">
-                          <label className="text-[11px] text-gray-400">
-                            Original Problem URL (for LeetCode / GFG)
-                          </label>
-                          <input
-                            type="url"
-                            value={prob.externalUrl}
-                            onChange={(e) =>
-                              handleUpdateProblem(
-                                idx,
-                                "externalUrl",
-                                e.target.value
-                              )
-                            }
-                            placeholder="https://leetcode.com/problems/..."
-                            className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-xs text-white"
-                          />
-                        </div>
-
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
                             <label className="text-[11px] text-gray-400">

@@ -409,21 +409,6 @@ export default function ContestArena() {
                 }`}
               >
                 <span>Q{idx + 1}</span>
-                <span
-                  className={`text-[9px] uppercase px-1 py-0.2 rounded font-bold ${
-                    prob.source === "LeetCode"
-                      ? "bg-amber-950 text-amber-300"
-                      : prob.source === "GeeksForGeeks"
-                      ? "bg-emerald-950 text-emerald-300"
-                      : "bg-purple-950 text-purple-300"
-                  }`}
-                >
-                  {prob.source === "LeetCode"
-                    ? "LC"
-                    : prob.source === "GeeksForGeeks"
-                    ? "GFG"
-                    : "Mentor"}
-                </span>
                 {isSolved && (
                   <CheckCircle className="w-3.5 h-3.5 text-green-400" />
                 )}
@@ -496,22 +481,11 @@ export default function ContestArena() {
               <div className="flex items-start justify-between border-b border-gray-800 pb-3">
                 <div>
                   <div className="flex items-center space-x-2 mb-1.5">
-                    <span
-                      className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                        activeProblem.source === "LeetCode"
-                          ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                          : activeProblem.source === "GeeksForGeeks"
-                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                          : "bg-purple-500/20 text-purple-300 border border-purple-500/40"
-                      }`}
-                    >
-                      {activeProblem.source} Problem
-                    </span>
                     <span className="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-300 font-medium">
                       {activeProblem.difficulty || "Medium"}
                     </span>
                     <span className="text-xs text-blue-400 font-mono font-semibold">
-                      +{activeProblem.points || 100} pts
+                      +{activeProblem.points} pts
                     </span>
                   </div>
                   <h2 className="text-xl font-extrabold text-white">
@@ -519,19 +493,6 @@ export default function ContestArena() {
                   </h2>
                 </div>
 
-                {/* External link for LeetCode / GFG */}
-                {activeProblem.externalUrl && (
-                  <a
-                    href={activeProblem.externalUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center space-x-1 text-xs text-blue-400 hover:text-blue-300 bg-gray-800/80 px-2.5 py-1.5 rounded-lg border border-gray-700 transition-all shrink-0"
-                    title={`View problem on ${activeProblem.source}`}
-                  >
-                    <span>Original</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                )}
               </div>
 
               {/* Statement Content */}

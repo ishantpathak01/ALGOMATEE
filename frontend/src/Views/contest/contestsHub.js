@@ -53,9 +53,8 @@ export default function ContestsHub() {
             Weekly Coding Contests
           </h1>
           <p className="text-gray-400 text-sm md:text-base leading-relaxed">
-            Curated and assigned by industry mentors. Test your skills against real
-            LeetCode classics, GeeksforGeeks algorithms, and mentor-crafted DSA
-            challenges to climb the leaderboard!
+            Assigned by your mentors. Solve the problems, beat the clock and climb
+            the live leaderboard!
           </p>
         </div>
 
@@ -101,15 +100,7 @@ export default function ContestsHub() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {filtered.map((contest) => {
               const isActive = contest.status === "active";
-              const leetcodeCount =
-                contest.problems?.filter((p) => p.source === "LeetCode").length || 0;
-              const gfgCount =
-                contest.problems?.filter((p) => p.source === "GeeksForGeeks")
-                  .length || 0;
-              const mentorCount =
-                contest.problems?.filter(
-                  (p) => p.source === "AlgoMate" || p.source === "Custom"
-                ).length || 0;
+              const totalPoints = (contest.problems || []).reduce((t, p) => t + (p.points || 0), 0);
 
               return (
                 <div
@@ -175,23 +166,13 @@ export default function ContestsHub() {
                       </div>
                     </div>
 
-                    {/* Problem Source Pills */}
                     <div className="flex flex-wrap gap-2 text-[11px]">
-                      {leetcodeCount > 0 && (
-                        <span className="px-2 py-0.5 rounded-md bg-amber-950/40 text-amber-300 border border-amber-800/50">
-                          {leetcodeCount}x LeetCode
-                        </span>
-                      )}
-                      {gfgCount > 0 && (
-                        <span className="px-2 py-0.5 rounded-md bg-emerald-950/40 text-emerald-300 border border-emerald-800/50">
-                          {gfgCount}x GeeksForGeeks
-                        </span>
-                      )}
-                      {mentorCount > 0 && (
-                        <span className="px-2 py-0.5 rounded-md bg-purple-950/40 text-purple-300 border border-purple-800/50">
-                          {mentorCount}x Mentor Special
-                        </span>
-                      )}
+                      <span className="px-2 py-0.5 rounded-md bg-blue-950/40 text-blue-300 border border-blue-800/50">
+                        {contest.problems?.length || 0} Problems
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-amber-950/40 text-amber-300 border border-amber-800/50">
+                        {totalPoints} Points
+                      </span>
                     </div>
                   </div>
 
