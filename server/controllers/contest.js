@@ -1,3 +1,4 @@
+import jwt from "jsonwebtoken";
 import Contest from "../models/Contest.js";
 import User from "../models/user.js";
 import { executeOne, outputsMatch } from "../utils/compiler/execute.js";
@@ -16,20 +17,49 @@ const minsOf = (sub, part) => {
 
 const isId = (id) => /^[a-f0-9]{24}$/i.test(String(id || ""));
 
-/** Never send other people's code or hidden expected outputs to the browser. */
-const sanitize = (contestDoc) => {
+/** Problems as the browser may see them once the contest is open for that person:
+ *  hidden test cases are NEVER sent (only how many there are). */
+const revealedProblems = (problems = []) =>
+  problems.map((p) => {
+    const o = p.toObject ? p.toObject() : { ...p };
+    const all = o.testcases || [];
+    return {
+      ...o,
+      testcases: all.filter((t) => !t.isHidden),
+      hiddenTestcaseCount: all.filter((t) => t.isHidden).length,
+    };
+  });
+
+/** Before the contest starts nobody sees the questions: only an id, difficulty and points. */
+const maskedProblems = (problems = []) =>
+  problems.map((p) => ({
+    _id: p._id,
+    difficulty: p.difficulty,
+    points: p.points,
+    locked: true,
+  }));
+
+/** Admin-panel token (Bearer) can always see everything. */
+const isPanelAdminReq = (req) => {
+  try {
+    const header = req.headers?.authorization || "";
+    if (!header.startsWith("Bearer ")) return false;
+    const payload = jwt.verify(header.slice(7), `${process.env.SECRET_KEY}:admin`);
+    return payload.role === "admin";
+  } catch (e) {
+    return false;
+  }
+};
+
+/** Never send other people's code, hidden test cases or (before the contest) the questions. */
+const sanitize = (contestDoc, { reveal = false } = {}) => {
   const c = contestDoc.toObject ? contestDoc.toObject() : { ...contestDoc };
   const nowMs = Date.now();
   c.status = nowMs < new Date(c.startTime).getTime() ? "upcoming" : nowMs > new Date(c.endTime).getTime() ? "completed" : "active";
   delete c.submissions;
   if (!c.winnersPublished) delete c.winners; // unpublished winners stay private
   delete c.participants;
-  c.problems = (c.problems || []).map((p) => ({
-    ...p,
-    testcases: (p.testcases || []).map((t) =>
-      t.isHidden ? { ...t, output: "", explanation: "" } : t
-    ),
-  }));
+  c.problems = reveal ? revealedProblems(c.problems) : maskedProblems(c.problems);
   c.participantCount = (contestDoc.participants || []).length;
   delete c.leaderboard; // ranking is admin-only; old stored rows are never sent
   return c;
@@ -260,7 +290,7 @@ export const getWeeklyContest = async (req, res) => {
   try {
     const contest = await Contest.findOne({ endTime: { $gt: new Date() } }).sort({ createdAt: -1 });
     if (!contest) return res.status(200).json({ status: 200, data: null, message: "No active contest right now." });
-    return res.status(200).json({ status: 200, data: sanitize(contest) });
+    return res.status(200).json({ status: 200, data: sanitize(contest, { reveal: isPanelAdminReq(req) }) });
   } catch (err) {
     return res.status(500).json({ status: 500, data: null, message: err.message });
   }
@@ -269,7 +299,7 @@ export const getWeeklyContest = async (req, res) => {
 export const getAllContests = async (req, res) => {
   try {
     const contests = await Contest.find().sort({ createdAt: -1 });
-    return res.status(200).json({ status: 200, data: contests.map(sanitize) });
+    return res.status(200).json({ status: 200, data: contests.map((c) => sanitize(c, { reveal: isPanelAdminReq(req) })) });
   } catch (err) {
     return res.status(500).json({ status: 500, data: [], message: err.message });
   }
@@ -280,7 +310,12 @@ export const getContestById = async (req, res) => {
     if (!isId(req.params.id)) return res.status(404).json({ status: 404, data: null, message: "Contest not found." });
     const contest = await Contest.findById(req.params.id);
     if (!contest) return res.status(404).json({ status: 404, data: null, message: "Contest not found." });
-    return res.status(200).json({ status: 200, data: sanitize(contest) });
+    const uid = String(req.user?.Id || "");
+    const entered = (contest.participants || []).some((p) => p.userId === uid);
+    const ended = Date.now() > new Date(contest.endTime).getTime();
+    // Questions are shown only to someone who pressed Start (or after the contest has ended).
+    const reveal = isPanelAdminReq(req) || entered || ended;
+    return res.status(200).json({ status: 200, data: sanitize(contest, { reveal }) });
   } catch (err) {
     return res.status(500).json({ status: 500, data: null, message: err.message });
   }
@@ -299,6 +334,12 @@ export const createContest = async (req, res) => {
       }
       if (!p.testcases || p.testcases.length === 0 || p.testcases.some((t) => !String(t.output ?? "").trim())) {
         return res.status(400).json({ status: 400, message: `Every test case of "${p.title || "a problem"}" needs an expected output.` });
+      }
+    }
+
+    for (const p of problems) {
+      if (!(p.testcases || []).some((t) => !t.isHidden)) {
+        return res.status(400).json({ status: 400, message: `\"${p.title || "A problem"}\" needs at least one visible (sample) test case.` });
       }
     }
 
@@ -327,7 +368,7 @@ export const createContest = async (req, res) => {
       status: "active",
     });
 
-    return res.status(201).json({ status: 201, message: "Contest created successfully!", data: sanitize(newContest) });
+    return res.status(201).json({ status: 201, message: "Contest created successfully!", data: sanitize(newContest, { reveal: true }) });
   } catch (err) {
     return res.status(500).json({ status: 500, message: err.message || "Failed to create contest." });
   }
@@ -364,6 +405,7 @@ export const enterContest = async (req, res) => {
         personalEndsAt: new Date(Math.min(new Date(part.enteredAt).getTime() + contest.durationMinutes * 60000, new Date(contest.endTime).getTime())),
         score: me?.score || 0,
         solvedProblemIds: me?.solvedProblemIds || [],
+        problems: revealedProblems(contest.problems),
       },
     });
   } catch (err) {

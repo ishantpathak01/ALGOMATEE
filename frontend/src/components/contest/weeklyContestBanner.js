@@ -8,6 +8,7 @@ import {
   Code2,
   ChevronRight,
   Sparkles,
+  Lock,
 } from "lucide-react";
 import { getWeeklyContest } from "../../APIs/contest";
 
@@ -66,7 +67,7 @@ export default function WeeklyContestBanner() {
           <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-blue-600/20 blur-3xl pointer-events-none"></div>
           <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 rounded-full bg-purple-600/20 blur-3xl pointer-events-none"></div>
 
-          {/* Header row: Live Badge + Assigned by Mentor */}
+          {/* Header row: Live Badge */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-800 pb-6 mb-6">
             <div className="flex items-center space-x-3">
               <span className="flex h-3 w-3 relative">
@@ -79,25 +80,6 @@ export default function WeeklyContestBanner() {
               </span>
             </div>
 
-            {/* Mentor Attribution */}
-            <div className="flex items-center space-x-3 bg-gray-900/80 border border-gray-800 px-4 py-2 rounded-2xl">
-              <img
-                src={
-                  contest.mentorAvatar ||
-                  `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(contest.mentorName || "Mentor")}`
-                }
-                alt={contest.mentorName}
-                className="w-9 h-9 rounded-full object-cover ring-2 ring-blue-500/50"
-              />
-              <div className="text-left">
-                <p className="text-[11px] text-blue-400 uppercase tracking-wider font-semibold flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 inline" /> Assigned by Mentor
-                </p>
-                <p className="text-xs font-bold text-white">
-                  {contest.mentorName || "AlgoMate Lead Mentor"}
-                </p>
-              </div>
-            </div>
           </div>
 
           {/* Main content grid */}
@@ -125,31 +107,13 @@ export default function WeeklyContestBanner() {
                 </span>
               </div>
 
-              {/* Contest Questions preview list */}
-              <div className="space-y-2 pt-2">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Contest Problem Set:
+              {/* Questions stay hidden until the contest starts */}
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-900/60 border border-dashed border-gray-700 text-xs text-gray-400">
+                <Lock className="w-5 h-5 text-gray-500 shrink-0" />
+                <p>
+                  <span className="font-semibold text-gray-200">Questions are hidden.</span>{" "}
+                  The {problemCount} problems are revealed only after you press Start inside the contest.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  {contest.problems?.map((prob, idx) => (
-                    <div
-                      key={idx}
-                      className="p-2.5 rounded-xl bg-gray-900/60 border border-gray-800/80 hover:border-gray-700 transition-all flex flex-col justify-between"
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-800 text-gray-300">
-                          {prob.difficulty}
-                        </span>
-                        <span className="text-[10px] text-gray-400 font-mono">
-                          {prob.points} pts
-                        </span>
-                      </div>
-                      <p className="font-semibold text-gray-200 line-clamp-1">
-                        {prob.title}
-                      </p>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
 

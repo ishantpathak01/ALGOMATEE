@@ -40,7 +40,7 @@ export default function MentorContests() {
     inputFormat: "",
     outputFormat: "",
     constraints: "",
-    testcases: [{ input: "", output: "" }],
+    testcases: [{ input: "", output: "", isHidden: false }],
     mentorHint: "",
   });
   const [problems, setProblems] = useState([blankProblem()]);
@@ -83,7 +83,7 @@ export default function MentorContests() {
   const handleAddProblemTestCase = (probIdx) => {
     const updated = [...problems];
     if (!updated[probIdx].testcases) updated[probIdx].testcases = [];
-    updated[probIdx].testcases.push({ input: "", output: "" });
+    updated[probIdx].testcases.push({ input: "", output: "", isHidden: false });
     setProblems(updated);
   };
 
@@ -126,6 +126,13 @@ export default function MentorContests() {
     if (!(Number(durationMinutes) > 0)) {
       toast.error("Enter the time each participant gets (minutes).");
       return;
+    }
+
+    for (const [i, pr] of problems.entries()) {
+      if (!(pr.testcases || []).some((t) => !t.isHidden)) {
+        toast.error(`Problem #${i + 1} needs at least one visible (sample) test case.`);
+        return;
+      }
     }
 
     const payload = {
@@ -243,7 +250,7 @@ export default function MentorContests() {
                           key={idx}
                           className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-gray-800 text-gray-300 border border-gray-700"
                         >
-                          {p.title}
+                          {p.title || `Question ${idx + 1}`}
                         </span>
                       ))}
                     </div>
@@ -483,16 +490,36 @@ export default function MentorContests() {
 
                       <div className="space-y-1">
                         <label className="text-[11px] text-gray-400">
-                          Problem Statement / Instructions
+                          Problem Statement (press Enter for new paragraphs)
                         </label>
                         <textarea
-                          rows={2}
+                          rows={5}
                           value={prob.statement}
                           onChange={(e) =>
                             handleUpdateProblem(idx, "statement", e.target.value)
                           }
-                          className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-xs text-white"
+                          placeholder={"Describe the problem clearly.\n\nYou can use several paragraphs."}
+                          className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-xs text-white resize-y whitespace-pre-wrap"
                         />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {[
+                          ["inputFormat", "Input Format", "First line: N\nSecond line: N integers"],
+                          ["outputFormat", "Output Format", "Print a single integer"],
+                          ["constraints", "Constraints (one per line)", "1 <= N <= 10^5\n-10^9 <= A[i] <= 10^9"],
+                        ].map(([field, label, ph]) => (
+                          <div key={field} className="space-y-1">
+                            <label className="text-[11px] text-gray-400">{label}</label>
+                            <textarea
+                              rows={3}
+                              value={prob[field] || ""}
+                              onChange={(e) => handleUpdateProblem(idx, field, e.target.value)}
+                              placeholder={ph}
+                              className="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-xs text-white font-mono resize-y whitespace-pre-wrap"
+                            />
+                          </div>
+                        ))}
                       </div>
 
                       {/* Test Cases for this Problem */}
@@ -555,6 +582,20 @@ export default function MentorContests() {
                                   className="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-xs text-emerald-300 font-mono resize-y whitespace-pre"
                                 />
                               </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleUpdateProblemTestCase(idx, tcIdx, "isHidden", !tc.isHidden)
+                                }
+                                title={tc.isHidden ? "Hidden: students cannot see this test case" : "Visible: shown to students as a sample"}
+                                className={`shrink-0 text-[10px] font-bold px-2.5 py-1.5 rounded-lg border transition-all ${
+                                  tc.isHidden
+                                    ? "bg-purple-600/30 text-purple-200 border-purple-500/60"
+                                    : "bg-gray-800 text-gray-400 border-gray-700 hover:text-white"
+                                }`}
+                              >
+                                {tc.isHidden ? "🔒 Hidden" : "👁 Visible"}
+                              </button>
                               <button
                                 type="button"
                                 onClick={() =>

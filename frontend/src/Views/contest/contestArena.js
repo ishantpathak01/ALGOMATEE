@@ -6,6 +6,13 @@ import ProblemStatement from "./../../components/practice/coding/problemStatemen
 import CustomTestcases from "./../../components/practice/coding/testcases";
 import { getContestById, submitContestProblem, enterContest } from "../../APIs/contest";
 import { executeCode } from "../../utils/codeRunner";
+import {
+  Java as JavaBP,
+  C as CBP,
+  Cpp as CppBP,
+  Python as PythonBP,
+  JavaScript as JsBP,
+} from "../../ConstantData/boilerplate";
 import { useAppContext } from "../../context/userContext";
 import toast from "react-hot-toast";
 import {
@@ -20,6 +27,29 @@ import {
   LogOut,
   AlertTriangle
 } from "lucide-react";
+
+const TEMPLATES = { java: JavaBP, c: CBP, cpp: CppBP, javascript: JsBP, python: PythonBP };
+const templateFor = (lang) => TEMPLATES[lang] ?? "";
+
+const looksLikeHtml = (t = "") => /<\/?[a-z][\s\S]*?>/i.test(t);
+
+/** Small titled block used in the structured problem view. */
+function Section({ title, children }) {
+  return (
+    <div className="space-y-1.5">
+      <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-400">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function CodeBlock({ children }) {
+  return (
+    <pre className="p-2.5 rounded-lg bg-gray-950 border border-gray-800 text-gray-200 font-mono text-xs whitespace-pre-wrap overflow-x-auto">
+      {children}
+    </pre>
+  );
+}
 
 export default function ContestArena() {
   const { contestId } = useParams();
@@ -211,6 +241,12 @@ export default function ContestArena() {
       if (document.fullscreenElement) document.exitFullscreen();
       return;
     }
+    // The questions are only sent by the server once the contest has been entered.
+    if (Array.isArray(r.data.problems)) {
+      setContest((c) => ({ ...(c || {}), problems: r.data.problems }));
+    }
+    setActiveProblemIndex(0);
+    setCode(templateFor(language));
     setEnteredAt(new Date(r.data.enteredAt).getTime());
     setEndsAtMs(new Date(r.data.personalEndsAt).getTime());
     setSolvedProblemIds(r.data.solvedProblemIds || []);
@@ -492,8 +528,11 @@ export default function ContestArena() {
               <button
                 key={prob._id || idx}
                 onClick={() => {
+                  if (idx === activeProblemIndex) return;
                   setActiveProblemIndex(idx);
                   setOutput(null);
+                  setActiveTerminalTab("custom");
+                  setCode(templateFor(language)); // fresh starter template, never the previous answer
                 }}
                 className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                   isCurrent
@@ -581,41 +620,77 @@ export default function ContestArena() {
 
               </div>
 
-              {/* Statement Content */}
-              <div
-                className="text-gray-300 text-sm leading-relaxed prose prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: activeProblem.statement }}
-              />
+              {/* Statement, structured */}
+              <div className="space-y-5">
+                <Section title="Problem Statement">
+                  {looksLikeHtml(activeProblem.statement) ? (
+                    <div
+                      className="text-gray-300 text-sm leading-relaxed prose prose-invert max-w-none"
+                      dangerouslySetInnerHTML={{ __html: activeProblem.statement }}
+                    />
+                  ) : (
+                    <div className="space-y-2 text-gray-300 text-sm leading-relaxed">
+                      {String(activeProblem.statement || "")
+                        .split(/\n\s*\n/)
+                        .filter((para) => para.trim())
+                        .map((para, i) => (
+                          <p key={i} className="whitespace-pre-wrap">{para.trim()}</p>
+                        ))}
+                    </div>
+                  )}
+                </Section>
 
-              {/* Input / Output constraints */}
-              {(activeProblem.inputFormat || activeProblem.outputFormat) && (
-                <div className="space-y-2 pt-2 border-t border-gray-800 text-xs">
-                  {activeProblem.inputFormat && (
-                    <div>
-                      <span className="font-bold text-gray-300">Input Format: </span>
-                      <span className="text-gray-400 font-mono">
-                        {activeProblem.inputFormat}
-                      </span>
+                {activeProblem.inputFormat && (
+                  <Section title="Input Format">
+                    <CodeBlock>{activeProblem.inputFormat}</CodeBlock>
+                  </Section>
+                )}
+
+                {activeProblem.outputFormat && (
+                  <Section title="Output Format">
+                    <CodeBlock>{activeProblem.outputFormat}</CodeBlock>
+                  </Section>
+                )}
+
+                {activeProblem.constraints && (
+                  <Section title="Constraints">
+                    <ul className="list-disc list-inside space-y-0.5 text-xs text-gray-300 font-mono">
+                      {String(activeProblem.constraints)
+                        .split(/\n/)
+                        .filter((l) => l.trim())
+                        .map((l, i) => (
+                          <li key={i}>{l.trim()}</li>
+                        ))}
+                    </ul>
+                  </Section>
+                )}
+
+                {(activeProblem.testcases || []).length > 0 && (
+                  <Section title="Examples">
+                    <div className="space-y-3">
+                      {(activeProblem.testcases || []).slice(0, 2).map((t, i) => (
+                        <div key={i} className="space-y-1.5 p-3 rounded-lg bg-gray-950/60 border border-gray-800">
+                          <p className="text-[11px] font-semibold text-gray-400">Example {i + 1}</p>
+                          <div>
+                            <p className="text-[10px] uppercase text-gray-500 mb-0.5">Input</p>
+                            <CodeBlock>{t.input}</CodeBlock>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase text-gray-500 mb-0.5">Output</p>
+                            <CodeBlock>{t.output}</CodeBlock>
+                          </div>
+                          {t.explanation && (
+                            <p className="text-xs text-gray-400 whitespace-pre-wrap">
+                              <span className="font-semibold text-gray-300">Explanation: </span>
+                              {t.explanation}
+                            </p>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  )}
-                  {activeProblem.outputFormat && (
-                    <div>
-                      <span className="font-bold text-gray-300">Output Format: </span>
-                      <span className="text-gray-400 font-mono">
-                        {activeProblem.outputFormat}
-                      </span>
-                    </div>
-                  )}
-                  {activeProblem.constraints && (
-                    <div>
-                      <span className="font-bold text-gray-300">Constraints: </span>
-                      <span className="text-gray-400 font-mono">
-                        {activeProblem.constraints}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
+                  </Section>
+                )}
+              </div>
 
               {/* Mentor Hint */}
               {activeProblem.mentorHint && (
@@ -634,6 +709,7 @@ export default function ContestArena() {
           <div className="flex-1 bg-gray-900/90 rounded-xl overflow-hidden border border-gray-800 flex flex-col shadow-xl">
             <CustomTestcases
               testcases={activeProblem.testcases || []}
+              hiddenCount={activeProblem.hiddenTestcaseCount || 0}
               output={output}
               isRunning={isRunning}
               activeTab={activeTerminalTab}

@@ -53,7 +53,7 @@ export default function ContestsHub() {
             Weekly Coding Contests
           </h1>
           <p className="text-gray-400 text-sm md:text-base leading-relaxed">
-            Assigned by your mentors. Solve the problems, beat the clock and climb
+            Solve the problems, beat the clock and climb
             finish before the time runs out!
           </p>
         </div>
@@ -144,26 +144,6 @@ export default function ContestsHub() {
                       <p className="text-gray-400 text-xs mt-1.5 line-clamp-2 leading-relaxed">
                         {contest.description}
                       </p>
-                    </div>
-
-                    {/* Assigned by Mentor */}
-                    <div className="flex items-center space-x-3 bg-gray-950/60 p-2.5 rounded-xl border border-gray-800/80">
-                      <img
-                        src={
-                          contest.mentorAvatar ||
-                          "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=80&auto=format&fit=crop&q=80"
-                        }
-                        alt={contest.mentorName}
-                        className="w-8 h-8 rounded-full object-cover ring-1 ring-blue-400"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[10px] text-blue-400 font-semibold uppercase tracking-wider flex items-center gap-1">
-                          <Sparkles className="w-2.5 h-2.5" /> Assigned by Mentor
-                        </p>
-                        <p className="text-xs font-bold text-gray-200 truncate">
-                          {contest.mentorName || "AlgoMate Lead Mentor"}
-                        </p>
-                      </div>
                     </div>
 
                     <div className="flex flex-wrap gap-2 text-[11px]">

@@ -5,6 +5,7 @@ import { Terminal, CheckCircle, XCircle, Play, Cpu, Clock } from "lucide-react";
 function Testcases({
   testcases = [],
   newTestcases = [],
+  hiddenCount = 0,
   setNewTestcases,
   output,
   isRunning = false,
@@ -164,6 +165,12 @@ function Testcases({
                 </span>
               </button>
             </div>
+
+            {hiddenCount > 0 && (
+              <p className="text-[11px] text-purple-300 bg-purple-950/30 border border-purple-800/50 rounded-lg px-3 py-1.5">
+                🔒 {hiddenCount} hidden test case{hiddenCount > 1 ? "s" : ""} will be checked when you press Submit.
+              </p>
+            )}
 
             {/* Testcase Input display */}
             <div className="space-y-2">

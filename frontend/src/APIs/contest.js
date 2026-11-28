@@ -28,7 +28,7 @@ export const getWeeklyContest = async () => {
 
 export const getAllContests = async () => {
   try {
-    const res = await axios.get(`${SERVER}/contest/all`, opts);
+    const res = await axios.get(`${SERVER}/contest/all`, adminOpts());
     return res.data;
   } catch (err) {
     return fail(err, { data: [] });
