@@ -6,6 +6,7 @@ import {
   getContestById,
   createContest,
   submitContestProblem,
+  runContestHidden,
   enterContest,
   getLeaderboard,
   requireAdmin,
@@ -79,6 +80,7 @@ router.get("/:id", verifyToken, getContestById);
 router.delete("/:contestId", adminAuth, deleteContest);
 router.post("/:contestId/winners", adminAuth, setContestWinners);
 router.post("/create", verifyToken, createContest);
+router.post("/:contestId/run", verifyToken, runContestHidden);
 router.post("/:contestId/submit", verifyToken, submitContestProblem);
 
 export default router;

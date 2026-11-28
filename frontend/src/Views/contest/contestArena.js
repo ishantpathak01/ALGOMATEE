@@ -4,7 +4,7 @@ import { Resizable } from "re-resizable";
 import Editor from "./../../components/practice/coding/editor";
 import ProblemStatement from "./../../components/practice/coding/problemStatement";
 import CustomTestcases from "./../../components/practice/coding/testcases";
-import { getContestById, submitContestProblem, enterContest } from "../../APIs/contest";
+import { getContestById, submitContestProblem, runContestHidden, enterContest } from "../../APIs/contest";
 import { executeCode } from "../../utils/codeRunner";
 import {
   Java as JavaBP,
@@ -357,7 +357,35 @@ export default function ContestArena() {
         userId: user?._id,
         isSubmit: false,
       });
-      setOutput(res);
+      // Also check the hidden test cases on the server (only counts come back, never their data).
+      let merged = res;
+      if ((activeProblem.hiddenTestcaseCount || 0) > 0 && activeProblem._id) {
+        let h;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          h = await runContestHidden(contestId, {
+            problemId: activeProblem._id,
+            code,
+            language,
+          });
+          if (h?.status !== 503) break;
+          await new Promise((r) => setTimeout(r, 1500 + attempt * 1500));
+        }
+        if (h?.status === 200 && h.data) {
+          const { hiddenPassed, hiddenTotal, error: hErr } = h.data;
+          const hiddenFailed = hiddenTotal - hiddenPassed;
+          merged = {
+            ...res,
+            passed: (res?.passed || 0) + hiddenPassed,
+            failed: (res?.failed || 0) + hiddenFailed,
+            hiddenPassed,
+            hiddenTotal,
+            hiddenError: hErr,
+          };
+        } else {
+          toast.error(h?.message || "Could not check hidden test cases. Try Run again.", { id: "contest-exec" });
+        }
+      }
+      setOutput(merged);
       setActiveTerminalTab("terminal");
       toast.success("Execution completed! Terminal updated.", {
         id: "contest-exec",

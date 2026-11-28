@@ -159,18 +159,6 @@ function Testcases({
                 );
               })}
 
-              {/* Hidden test cases: only shown as locked placeholders (no input/output) */}
-              {Array.from({ length: hiddenCount }).map((_, i) => (
-                <span
-                  key={`hidden-${i}`}
-                  title="Hidden test case - checked on Submit"
-                  className="flex items-center space-x-1 px-3 py-1 rounded-md text-xs md:text-sm bg-purple-950/30 text-purple-300 border border-purple-800/50 cursor-not-allowed select-none"
-                >
-                  <span>Test {testcases.length + i + 1}</span>
-                  <span>🔒</span>
-                </span>
-              ))}
-
               <button
                 className="px-3 py-1 rounded-md bg-emerald-600/80 hover:bg-emerald-600 text-white text-xs font-medium flex items-center gap-1 transition-all"
                 onClick={handleAddTestcase}
@@ -184,10 +172,8 @@ function Testcases({
             </div>
 
             {(testcases.length + hiddenCount) > 0 && (
-              <p className="text-[11px] text-purple-300 bg-purple-950/30 border border-purple-800/50 rounded-lg px-3 py-1.5">
-                Total test cases: <b>{testcases.length + hiddenCount}</b> ({testcases.length} visible
-                {hiddenCount > 0 ? ` + ${hiddenCount} hidden` : ""}).
-                {hiddenCount > 0 && " 🔒 Hidden ones are checked when you press Submit."}
+              <p className="text-[11px] text-blue-300 bg-blue-950/30 border border-blue-800/50 rounded-lg px-3 py-1.5">
+                Total test cases: <b>{testcases.length + hiddenCount}</b>
               </p>
             )}
 
@@ -295,6 +281,21 @@ function Testcases({
                           <span>{r.passed ? "✓" : "✗"}</span>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {total > 0 && (
+                    <div
+                      className={`mt-2 flex items-center justify-between p-2 rounded text-[11px] border ${
+                        failed === 0
+                          ? "bg-green-950/30 text-green-300 border-green-900/50"
+                          : "bg-red-950/30 text-red-300 border-red-900/50"
+                      }`}
+                    >
+                      <span>
+                        Test cases passed: <b>{passed}/{total}</b>
+                      </span>
+                      <span>{failed === 0 ? "✓" : "✗"}</span>
                     </div>
                   )}
 

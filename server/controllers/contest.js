@@ -424,6 +424,64 @@ export const getLeaderboard = async (req, res) => {
   }
 };
 
+/** "Run" button: also checks the HIDDEN test cases, but only ever returns how many passed (never their input/output).
+ *  Nothing is saved: no submission, no points, no penalty. */
+export const runContestHidden = async (req, res) => {
+  try {
+    const { contestId } = req.params;
+    const { problemId, code, language } = req.body;
+    const userId = String(req.user.Id);
+
+    if (!isId(contestId)) return res.status(404).json({ status: 404, message: "Contest not found." });
+    if (!code || !problemId) return res.status(400).json({ status: 400, message: "Code and problem are required." });
+
+    const contest = await Contest.findById(contestId);
+    if (!contest) return res.status(404).json({ status: 404, message: "Contest not found." });
+
+    const problem = contest.problems.find((p) => String(p._id) === String(problemId));
+    if (!problem) return res.status(404).json({ status: 404, message: "Problem not found in this contest." });
+
+    const part = contest.participants.find((p) => p.userId === userId);
+    if (!part) return res.status(403).json({ status: 403, message: "Press Start to enter the contest first." });
+
+    const now = new Date();
+    const personalEnd = new Date(part.enteredAt).getTime() + (contest.durationMinutes || 90) * 60000;
+    if (now > new Date(contest.endTime) || now.getTime() > personalEnd) {
+      return res.status(400).json({ status: 400, message: "Your contest time is over." });
+    }
+
+    const hidden = (problem.testcases || []).filter((t) => t.isHidden);
+    if (hidden.length === 0) {
+      return res.status(200).json({ status: 200, data: { hiddenTotal: 0, hiddenPassed: 0 } });
+    }
+
+    let outputs;
+    try {
+      outputs = await executeMany(language, code, hidden.map((t) => String(t.input ?? "")), { owner: userId });
+    } catch (e) {
+      return res.status(503).json({ status: 503, message: e.message || "Judge is busy. Please retry." });
+    }
+
+    let hiddenPassed = 0;
+    let errorKind = "";
+    hidden.forEach((t, i) => {
+      const { stdout, stderr } = outputs[i];
+      if (stderr) {
+        errorKind = errorKind || (/time limit/i.test(stderr) ? "Time Limit Exceeded" : "Runtime Error");
+      } else if (outputsMatch(stdout, t.output)) {
+        hiddenPassed++;
+      }
+    });
+
+    return res.status(200).json({
+      status: 200,
+      data: { hiddenTotal: hidden.length, hiddenPassed, error: errorKind || undefined },
+    });
+  } catch (err) {
+    return res.status(500).json({ status: 500, message: err.message || "Hidden test run failed." });
+  }
+};
+
 /** Real judging: runs the code against the saved test cases of the problem. */
 export const submitContestProblem = async (req, res) => {
   try {

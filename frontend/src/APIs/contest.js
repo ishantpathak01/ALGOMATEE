@@ -71,6 +71,15 @@ export const getLeaderboard = async (contestId) => {
   }
 };
 
+export const runContestHidden = async (contestId, data) => {
+  try {
+    const res = await axios.post(`${SERVER}/contest/${contestId}/run`, data, { ...opts, timeout: 120000 });
+    return res.data;
+  } catch (err) {
+    return fail(err);
+  }
+};
+
 export const submitContestProblem = async (contestId, data) => {
   try {
     const res = await axios.post(`${SERVER}/contest/${contestId}/submit`, data, { ...opts, timeout: 120000 });
