@@ -77,6 +77,7 @@ export default function ContestArena() {
   const [warningReason, setWarningReason] = useState("You have exited full-screen mode.");
   const lastViolationAt = useRef(0);
   const modalOpenRef = useRef(false);
+  const startingRef = useRef(false);
   
   // Custom Quit Modal States
   const [showQuitModal, setShowQuitModal] = useState(false);
@@ -235,7 +236,19 @@ export default function ContestArena() {
       toast.error("Could not enable full screen. Please allow full screen to start.");
       return;
     }
-    const r = await enterContest(contestId);
+    if (startingRef.current) return; // ignore double-clicks
+    startingRef.current = true;
+    toast.loading("Entering the contest...", { id: "contest-start" });
+    let r;
+    // Many students press Start at the same second: retry quietly if the server is momentarily overloaded.
+    for (let attempt = 0; attempt < 4; attempt++) {
+      r = await enterContest(contestId);
+      if (r?.status === 200 && r.data) break;
+      if (![500, 502, 503, 504].includes(r?.status)) break;
+      await new Promise((res) => setTimeout(res, 1500 + attempt * 1500 + Math.random() * 1000));
+    }
+    startingRef.current = false;
+    toast.dismiss("contest-start");
     if (r?.status !== 200 || !r.data) {
       toast.error(r?.message || "Could not enter the contest.");
       if (document.fullscreenElement) document.exitFullscreen();
@@ -329,11 +342,18 @@ export default function ContestArena() {
     setIsRunning(true);
     toast.loading("Judging on the server...", { id: "contest-exec" });
     try {
-      const r = await submitContestProblem(contestId, {
-        problemId: activeProblem._id,
-        code,
-        language,
-      });
+      let r;
+      // 503 = the judge is busy. The server records NOTHING in that case (no wrong attempt, no penalty), so retry for the student.
+      for (let attempt = 0; attempt < 6; attempt++) {
+        r = await submitContestProblem(contestId, {
+          problemId: activeProblem._id,
+          code,
+          language,
+        });
+        if (r?.status !== 503) break;
+        toast.loading(`Many students are submitting - you are in the queue (retry ${attempt + 1}/6). Your code is safe.`, { id: "contest-exec" });
+        await new Promise((res) => setTimeout(res, 2000 + attempt * 2000 + Math.random() * 1000));
+      }
       if (r?.status === 401 || r?.status === 403) {
         toast.error("Your login session expired. Your code is still here - copy it, log in again in a new window, then re-enter.", { id: "contest-exec", duration: 8000 });
         setIsRunning(false);
