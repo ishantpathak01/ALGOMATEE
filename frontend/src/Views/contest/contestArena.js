@@ -334,6 +334,11 @@ export default function ContestArena() {
         code,
         language,
       });
+      if (r?.status === 401 || r?.status === 403) {
+        toast.error("Your login session expired. Your code is still here - copy it, log in again in a new window, then re-enter.", { id: "contest-exec", duration: 8000 });
+        setIsRunning(false);
+        return;
+      }
       if (r?.status !== 200 || !r.data) {
         toast.error(r?.message || "Submission failed.", { id: "contest-exec" });
         setOutput({ success: false, type: "Submit", passed: 0, failed: 1, total: 1, results: [], output: r?.message, error: true, message: r?.message });

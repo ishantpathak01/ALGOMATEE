@@ -67,7 +67,7 @@ export const signup = async (req, res) => {
     await Unverified.deleteOne({ _id: unverified._id }).session(session);
 
     const token = jwt.sign({ Id: output._id }, process.env.SECRET_KEY, {
-      expiresIn: "2h",
+      expiresIn: "7d",
     });
 
     await RewardModel.create({

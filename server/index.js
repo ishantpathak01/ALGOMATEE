@@ -14,6 +14,7 @@ import adminRoutes from "./routes/admin.js";
 import contestRoutes from "./routes/contest.js";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import { refreshSession } from "./utils/auth/refreshToken.js";
 import rateLimit from "express-rate-limit";
 import setupSocket from "./sockets/socket.js";
 
@@ -51,6 +52,7 @@ app.use(cors({
 
 app.use(express.json());
 app.use(cookieParser());
+app.use(refreshSession); // keeps students logged in (no more surprise "token expired")
 
 // Apply limiter only on API routes
 app.use("/api", limiter);
