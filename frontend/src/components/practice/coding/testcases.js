@@ -93,6 +93,11 @@ function Testcases({
               >
                 <Icon className="w-4 h-4" />
                 <span>{tab.label}</span>
+                {tab.id === "custom" && (testcases.length + hiddenCount) > 0 && (
+                  <span className="ml-1 px-1.5 text-[10px] rounded-full font-bold bg-blue-500/20 text-blue-300">
+                    {testcases.length + hiddenCount}
+                  </span>
+                )}
                 {tab.id === "result" && output && (
                   <span
                     className={`ml-1 px-1.5 py-0.2 text-[10px] rounded-full font-bold ${
@@ -154,6 +159,18 @@ function Testcases({
                 );
               })}
 
+              {/* Hidden test cases: only shown as locked placeholders (no input/output) */}
+              {Array.from({ length: hiddenCount }).map((_, i) => (
+                <span
+                  key={`hidden-${i}`}
+                  title="Hidden test case - checked on Submit"
+                  className="flex items-center space-x-1 px-3 py-1 rounded-md text-xs md:text-sm bg-purple-950/30 text-purple-300 border border-purple-800/50 cursor-not-allowed select-none"
+                >
+                  <span>Test {testcases.length + i + 1}</span>
+                  <span>🔒</span>
+                </span>
+              ))}
+
               <button
                 className="px-3 py-1 rounded-md bg-emerald-600/80 hover:bg-emerald-600 text-white text-xs font-medium flex items-center gap-1 transition-all"
                 onClick={handleAddTestcase}
@@ -166,9 +183,11 @@ function Testcases({
               </button>
             </div>
 
-            {hiddenCount > 0 && (
+            {(testcases.length + hiddenCount) > 0 && (
               <p className="text-[11px] text-purple-300 bg-purple-950/30 border border-purple-800/50 rounded-lg px-3 py-1.5">
-                🔒 {hiddenCount} hidden test case{hiddenCount > 1 ? "s" : ""} will be checked when you press Submit.
+                Total test cases: <b>{testcases.length + hiddenCount}</b> ({testcases.length} visible
+                {hiddenCount > 0 ? ` + ${hiddenCount} hidden` : ""}).
+                {hiddenCount > 0 && " 🔒 Hidden ones are checked when you press Submit."}
               </p>
             )}
 

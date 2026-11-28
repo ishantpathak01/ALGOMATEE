@@ -229,6 +229,41 @@ export default function ContestArena() {
     };
   }, [hasStarted, isDisqualified]);
 
+  // Block every Ctrl / Cmd shortcut (copy, paste, cut, select-all, find, view-source, etc.)
+  // plus right-click and clipboard events while the contest is running.
+  // Note: browser-level shortcuts like Ctrl+T / Ctrl+N / Ctrl+W cannot be blocked by a web page.
+  useEffect(() => {
+    if (!hasStarted || isDisqualified) return;
+    let lastToast = 0;
+    const warn = () => {
+      const t = Date.now();
+      if (t - lastToast > 2000) {
+        lastToast = t;
+        toast.error("Ctrl / Cmd shortcuts are disabled during the contest.", { id: "ctrl-blocked" });
+      }
+    };
+    const onKeyDown = (e) => {
+      if (e.ctrlKey || e.metaKey || e.key === "Control" || e.key === "Meta") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.key !== "Control" && e.key !== "Meta") warn();
+      }
+    };
+    const block = (e) => { e.preventDefault(); e.stopPropagation(); warn(); };
+    window.addEventListener("keydown", onKeyDown, true);
+    document.addEventListener("copy", block, true);
+    document.addEventListener("cut", block, true);
+    document.addEventListener("paste", block, true);
+    document.addEventListener("contextmenu", block, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+      document.removeEventListener("copy", block, true);
+      document.removeEventListener("cut", block, true);
+      document.removeEventListener("paste", block, true);
+      document.removeEventListener("contextmenu", block, true);
+    };
+  }, [hasStarted, isDisqualified]);
+
   const handleStartContest = async () => {
     try {
       await document.documentElement.requestFullscreen();
