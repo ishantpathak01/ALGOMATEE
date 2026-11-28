@@ -1,5 +1,5 @@
 import axios from "axios";
-import { executeOne, outputsMatch } from "../utils/compiler/execute.js";
+import { executeMany, outputsMatch } from "../utils/compiler/execute.js";
 import VerifiedArticle from "../models/articles/verifiedArticles.js";
 import User from "./../models/user.js";
 import CodingProblem from "../models/Problems/Coding.js";
@@ -287,6 +287,13 @@ export const runCodingCode = async (req, res) => {
     let globalStderr = "";
     const startTime = Date.now();
 
+    let outputs;
+    try {
+      outputs = await executeMany(lang, Code, problemTestcases.map((tc) => (tc.input !== undefined ? String(tc.input) : "")), { owner: req.user?.Id });
+    } catch (e) {
+      return res.json({ status: 503, message: e.message || "Judge is busy. Please retry." });
+    }
+
     for (let i = 0; i < problemTestcases.length; i++) {
       const tc = problemTestcases[i];
       const tcInput = tc.input !== undefined ? String(tc.input) : "";
@@ -296,7 +303,7 @@ export const runCodingCode = async (req, res) => {
       let stderr = "";
       let passed = false;
 
-      ({ stdout, stderr } = await executeOne(lang, Code, tcInput));
+      ({ stdout, stderr } = outputs[i]);
 
       const actualTrimmed = (stdout || "").trim();
       if (tcExpected) {
@@ -375,15 +382,23 @@ export const submitCodingCode = async (req, res) => {
     let passedCount = 0;
     const totalTestCases = problemTestcases.length > 0 ? problemTestcases.length : 1;
 
+    let outputs;
+    try {
+      outputs = await executeMany(lang, Code, problemTestcases.map((tc) => (tc.input !== undefined ? String(tc.input) : "")), { owner: Id });
+    } catch (e) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({ status: 503, message: e.message || "Judge is busy. Please retry." });
+    }
+
     for (let i = 0; i < problemTestcases.length; i++) {
         const tc = problemTestcases[i];
-        const tcInput = tc.input !== undefined ? String(tc.input) : "";
         const tcExpected = tc.output !== undefined ? String(tc.output).trim() : "";
         let stdout = "";
         let stderr = "";
         let passed = false;
 
-        ({ stdout, stderr } = await executeOne(lang, Code, tcInput));
+        ({ stdout, stderr } = outputs[i]);
 
         const actualTrimmed = (stdout || "").trim();
         if (tcExpected) {

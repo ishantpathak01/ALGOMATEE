@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import Contest from "../models/Contest.js";
 import User from "../models/user.js";
-import { executeOne, outputsMatch } from "../utils/compiler/execute.js";
+import { executeMany, outputsMatch } from "../utils/compiler/execute.js";
 
 export const WRONG_PENALTY_MINUTES = 5;
 
@@ -461,8 +461,16 @@ export const submitContestProblem = async (req, res) => {
     let passed = 0;
     let verdict = "Accepted";
     let errorText = "";
-    for (const t of tests) {
-      const { stdout, stderr } = await executeOne(language, code, String(t.input ?? ""));
+    // Compile ONCE, run every test. If the judge is too busy to take the job we tell the student to retry
+    // and do NOT record a failed attempt (so no penalty minutes for our overload).
+    let outputs;
+    try {
+      outputs = await executeMany(language, code, tests.map((t) => String(t.input ?? "")), { owner: userId });
+    } catch (e) {
+      return res.status(503).json({ status: 503, message: e.message || "Judge is busy. Please retry." });
+    }
+    tests.forEach((t, i) => {
+      const { stdout, stderr } = outputs[i];
       if (stderr) {
         verdict = /time limit/i.test(stderr) ? "Time Limit Exceeded" : "Runtime Error";
         errorText = errorText || stderr;
@@ -471,7 +479,7 @@ export const submitContestProblem = async (req, res) => {
       } else if (verdict === "Accepted") {
         verdict = "Wrong Answer";
       }
-    }
+    });
     const total = tests.length;
     const accepted = total > 0 && passed === total;
     if (!accepted && verdict === "Accepted") verdict = "Wrong Answer";
